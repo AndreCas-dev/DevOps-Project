@@ -82,6 +82,7 @@ services:
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
+      - '--web.external-url=/prometheus'
     networks:
       - devops-network
 
