@@ -105,6 +105,8 @@ services:
     image: grafana/grafana-enterprise
     container_name: grafana
     restart: unless-stopped
+    env_file:
+      - ../secrets/.env
     volumes:
       - grafana_data:/var/lib/grafana
       - ../monitoring/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
