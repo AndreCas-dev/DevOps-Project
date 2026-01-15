@@ -97,7 +97,7 @@ services:
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
       - '--storage.path=/alertmanager'
-      - '--web.external-url=/alertmanager'
+      - '--web.external-url=http://localhost/alertmanager'
     networks:
       - devops-network
 

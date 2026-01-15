@@ -17,6 +17,7 @@ rule_files:
 
 alerting:
   alertmanagers:
-    - static_configs:
+    - path_prefix: /alertmanager
+      static_configs:
         - targets:
             - 'alertmanager:9093'
