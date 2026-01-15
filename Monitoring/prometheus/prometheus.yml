@@ -36,6 +36,16 @@ scrape_configs:
     static_configs:
       - targets: ['postgres-exporter:9187']
     metrics_path: /metrics
+  
+  - job_name: 'fluent-bit'
+    static_configs:
+      - targets: ['fluent-bit:2020']
+    metrics_path: /api/v1/metrics
+
+  - job_name: 'loki'
+    static_configs:
+      - targets: ['loki:3100']
+    metrics_path: /loki/api/v1/metrics
 
 rule_files:
   - /etc/prometheus/alerts.yml

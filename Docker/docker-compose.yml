@@ -15,10 +15,15 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      fluent-bit:
+        condition: service_started
     networks:
       - devops-network
-    labels:
-      - "logging=true"
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: localhost:24224
+        tag: app
 
   # PostgreSQL Database
   db:
@@ -47,10 +52,15 @@ services:
       dockerfile: Dockerfile
     container_name: frontend
     restart: unless-stopped
+    depends_on:
+      - fluent-bit
     networks:
       - devops-network
-    labels:
-      - "logging=true"
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: localhost:24224
+        tag: frontend
 
   nginx:
     image: nginx:alpine
@@ -64,10 +74,14 @@ services:
     depends_on:
       - app
       - frontend
+      - fluent-bit
     networks:
       - devops-network
-    labels:
-      - "logging=true"
+    logging:
+      driver: fluentd
+      options:
+        fluentd-address: localhost:24224
+        tag: nginx
 
   prometheus:
     image: prom/prometheus:latest
@@ -158,6 +172,31 @@ services:
       - db
     networks:
       - devops-network
+  
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    restart: unless-stopped
+    volumes:
+      - ../logging/loki/loki-config.yml:/etc/loki/loki-config.yaml:ro
+      - loki_data:/loki
+    command:
+      - '-config.file=/etc/loki/loki-config.yaml'
+    networks:
+      - devops-network
+
+  fluent-bit:
+    image: fluent/fluent-bit
+    container_name: fluent-bit
+    ports:
+      - "24224:24224"
+    restart: unless-stopped
+    volumes:
+      - ../logging/fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+    depends_on:
+      - loki
+    networks:
+      - devops-network
 
 networks:
   devops-network:
@@ -169,3 +208,5 @@ volumes:
   alertmanager_data:
   grafana_data:
   node_exporter_data:
+  loki_data:
+  fluentbit_data:
