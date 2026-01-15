@@ -84,7 +84,7 @@ devops-project/
 │   │   │       └── prometheus.yml
 │   │   └── grafana.ini
 │   │
-│   ├── alertmanager/
+│   ├── alertmanager/                  # Con Slack per notificare gli alerts
 │   │   └── alertmanager.yml
 │   │
 │   └── node-exporter/                 # Metriche sistema
