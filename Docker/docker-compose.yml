@@ -77,11 +77,13 @@ services:
       - "9090:9090"
     volumes:
       - ../Monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../Monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus_data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--web.external-url=/prometheus'
+      - '--web.enable-lifecycle'
     networks:
       - devops-network
 
@@ -90,11 +92,12 @@ services:
     container_name: alertmanager
     restart: unless-stopped
     volumes:
-      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+       - alertmanager_data:/alertmanager
     command:
-      - --config.file=/etc/alertmanager/alertmanager.yml
-    ports:
-      - 9093:9093
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=/alertmanager'
     networks:
       - devops-network
 
