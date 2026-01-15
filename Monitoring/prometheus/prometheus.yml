@@ -11,3 +11,12 @@ scrape_configs:
     static_configs:
       - targets: ['app:8000']
     metrics_path: /metrics
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - 'alertmanager:9093'

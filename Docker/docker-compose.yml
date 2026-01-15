@@ -52,7 +52,6 @@ services:
     labels:
       - "logging=true"
 
-  # Nginx Reverse Proxy
   nginx:
     image: nginx:alpine
     container_name: nginx
@@ -83,6 +82,19 @@ services:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
       - '--web.external-url=/prometheus'
+    networks:
+      - devops-network
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    restart: unless-stopped
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+    ports:
+      - 9093:9093
     networks:
       - devops-network
 
