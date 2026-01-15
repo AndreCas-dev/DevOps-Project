@@ -54,15 +54,17 @@ devops-project/
 │   ├── nginx/                         # Reverse proxy
 │   │   ├── Dockerfile
 │   │   ├── nginx.conf
-│   │   └── conf.d/
-│   │       ├── default.conf
-│   │       └── ssl.conf
-│   │
+│   │   ├── conf.d/
+│   │   │   ├── default.conf
+│   │   │   └── ssl.conf
+│   │   └── nginx-exporter             # No file, config necessaria sul docker-compose 
+│   │   
 │   └── database/                      # Database setup
 │       ├── Dockerfile
 │       ├── init-scripts/
 │       │   └── 01-init.sql
-│       └── backup/
+│       ├── backup/
+│       └── postgres-exporter          # No file, config necessaria sul docker-compose 
 │
 ├── monitoring/                        # Stack di monitoring
 │   ├── prometheus/
@@ -87,8 +89,7 @@ devops-project/
 │   ├── alertmanager/                  # Con Slack per notificare gli alerts
 │   │   └── alertmanager.yml
 │   │
-│   └── node-exporter/                 # Metriche sistema
-│       └── config.yml
+│   └── node-exporter                  # Metriche sistema, no file, config necessaria sul docker-compose 
 │
 ├── logging/                           # Stack di logging
 │   ├── loki/
