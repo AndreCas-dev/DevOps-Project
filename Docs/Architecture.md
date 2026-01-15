@@ -147,14 +147,15 @@ devops-project/
 ├── docs/                              # Documentazione
 │   ├── architecture.md                # Architettura sistema
 |   ├── tools-overview.md              # Spiegazione tools
-|   ├── adr.md                         # Spiegtazione sulle decisione dei strumenti
+|   ├── adr.md                         # Spiegazione sulle decisione dei strumenti
 │   ├── setup-guide.md                 # Guida setup
 │   ├── deployment.md                  # Guida deployment
 │   ├── monitoring.md                  # Guida monitoring
 │   ├── troubleshooting.md             # Risoluzione problemi
 │   └── diagrams/                      # Diagrammi architettura
 │       ├── infrastructure.png
-│       └── deployment-flow.png
+│       ├── pipeline CI-CD.png
+|       └── network.png
 │
 ├── tests/                             # Test
 │   ├── unit/
