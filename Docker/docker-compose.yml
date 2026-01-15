@@ -92,8 +92,8 @@ services:
     container_name: alertmanager
     restart: unless-stopped
     volumes:
-      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
-       - alertmanager_data:/alertmanager
+      - ../monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_data:/alertmanager
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
       - '--storage.path=/alertmanager'
@@ -108,3 +108,4 @@ networks:
 volumes:
   postgres_data:
   prometheus_data:
+  alertmanager_data:
