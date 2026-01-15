@@ -135,6 +135,30 @@ services:
     networks:
       - devops-network
 
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:latest
+    container_name: nginx-exporter
+    restart: unless-stopped
+    command:
+      - '--nginx.scrape-uri=http://nginx:80/stub_status'
+    depends_on:
+      - nginx
+    networks:
+      - devops-network
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: postgres-exporter
+    restart: unless-stopped
+    environment:
+      - DATA_SOURCE_NAME=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-Test}?sslmode=disable
+    env_file:
+      - ../secrets/.env
+    depends_on:
+      - db
+    networks:
+      - devops-network
+
 networks:
   devops-network:
     driver: bridge

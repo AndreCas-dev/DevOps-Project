@@ -17,6 +17,26 @@ scrape_configs:
       - targets: ['node-exporter:9100']
     metrics_path: /metrics
 
+  - job_name: 'alertmanager'
+    static_configs:
+      - targets: ['alertmanager:9093']
+    metrics_path: /alertmanager/metrics
+
+  - job_name: 'grafana'
+    static_configs:
+      - targets: ['grafana:3000']
+    metrics_path: /grafana/metrics
+  
+  - job_name: 'nginx'
+    static_configs:
+      - targets: ['nginx-exporter:9113']
+    metrics_path: /metrics
+
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+    metrics_path: /metrics
+
 rule_files:
   - /etc/prometheus/alerts.yml
 
