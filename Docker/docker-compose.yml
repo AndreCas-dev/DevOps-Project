@@ -101,6 +101,22 @@ services:
     networks:
       - devops-network
 
+  grafana:
+    image: grafana/grafana-enterprise
+    container_name: grafana
+    restart: unless-stopped
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ../monitoring/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GF_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_ADMIN_PASSWORD:-admin}
+    depends_on:
+      - prometheus
+    networks:
+      - devops-network
+
 networks:
   devops-network:
     driver: bridge
@@ -109,3 +125,4 @@ volumes:
   postgres_data:
   prometheus_data:
   alertmanager_data:
+  grafana_data:
