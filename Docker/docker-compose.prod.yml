@@ -136,6 +136,21 @@ services:
           cpus: '0.05'
           memory: 32M
 
+  pgadmin:
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.1'
+          memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   loki:
     deploy:
       resources:

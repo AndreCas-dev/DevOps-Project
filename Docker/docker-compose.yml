@@ -172,7 +172,22 @@ services:
       - db
     networks:
       - devops-network
-  
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    restart: unless-stopped
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@admin.com}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-admin}
+      - SCRIPT_NAME=/pgadmin
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - db
+    networks:
+      - devops-network
+
   loki:
     image: grafana/loki:latest
     container_name: loki
@@ -204,3 +219,4 @@ networks:
 
 volumes:
   postgres_data:
+  pgadmin_data:
