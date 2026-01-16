@@ -1,10 +1,13 @@
 ---
 # Deploy role variables
 
+# Project root directory
+project_root: "/mnt/c/Users/andrea.castelletti/Documents/DevOps-Project"
+
 # Application directories
 app_base_dir: "/opt/devops-app"
 app_docker_dir: "{{ app_base_dir }}/docker"
-app_monitoring_dir: "{{ app_base_dir }}/Monitoring"
+app_monitoring_dir: "{{ app_base_dir }}/monitoring"
 app_logging_dir: "{{ app_base_dir }}/logging"
 app_secrets_dir: "{{ app_base_dir }}/secrets"
 app_volumes_dir: "{{ app_base_dir }}/volumes"
@@ -27,5 +30,5 @@ force_recreate: false
 sync_delete: false  # Delete files on remote not in source
 
 # Application owner
-app_user: "{{ ansible_user | default('ansible') }}"
-app_group: "docker"
+app_user: "{{ ansible_user_id }}"
+app_group: "{{ ansible_user_gid }}"

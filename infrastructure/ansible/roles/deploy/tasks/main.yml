@@ -28,7 +28,7 @@
 # =============================================================================
 - name: Sync docker directory
   ansible.posix.synchronize:
-    src: "{{ playbook_dir }}/../../docker/"
+    src: "{{ project_root }}/docker/"
     dest: "{{ app_docker_dir }}/"
     delete: "{{ sync_delete }}"
     rsync_opts:
@@ -39,9 +39,9 @@
   become: true
   notify: Restart application
 
-- name: Sync Monitoring directory
+- name: Sync monitoring directory
   ansible.posix.synchronize:
-    src: "{{ playbook_dir }}/../../Monitoring/"
+    src: "{{ project_root }}/monitoring/"
     dest: "{{ app_monitoring_dir }}/"
     delete: "{{ sync_delete }}"
     rsync_opts:
@@ -50,7 +50,7 @@
 
 - name: Sync logging directory
   ansible.posix.synchronize:
-    src: "{{ playbook_dir }}/../../logging/"
+    src: "{{ project_root }}/logging/"
     dest: "{{ app_logging_dir }}/"
     delete: "{{ sync_delete }}"
     rsync_opts:
@@ -86,37 +86,6 @@
     mode: '0600'
   become: true
   no_log: true
-
-# =============================================================================
-# Fix paths in docker-compose for deployment
-# =============================================================================
-- name: Create symlink for secrets directory
-  ansible.builtin.file:
-    src: "{{ app_secrets_dir }}"
-    dest: "{{ app_docker_dir }}/../secrets"
-    state: link
-  become: true
-
-- name: Create symlink for volumes directory
-  ansible.builtin.file:
-    src: "{{ app_volumes_dir }}"
-    dest: "{{ app_docker_dir }}/../volumes"
-    state: link
-  become: true
-
-- name: Create symlink for Monitoring directory
-  ansible.builtin.file:
-    src: "{{ app_monitoring_dir }}"
-    dest: "{{ app_docker_dir }}/../Monitoring"
-    state: link
-  become: true
-
-- name: Create symlink for logging directory
-  ansible.builtin.file:
-    src: "{{ app_logging_dir }}"
-    dest: "{{ app_docker_dir }}/../logging"
-    state: link
-  become: true
 
 # =============================================================================
 # Deploy with Docker Compose

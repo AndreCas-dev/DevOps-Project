@@ -90,8 +90,8 @@ services:
     ports:
       - "9090:9090"
     volumes:
-      - ../Monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-      - ../Monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
       - ../volumes/prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
