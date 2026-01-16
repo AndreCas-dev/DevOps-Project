@@ -17,5 +17,3 @@ make stop
 make status
 # oppure: docker compose ps
 ```
-
----

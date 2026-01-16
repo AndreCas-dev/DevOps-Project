@@ -120,7 +120,7 @@ devops-project/
 │       └── health-check.sh
 │
 ├── secrets/                           # Gestione secrets (NON committare!)
-│   ├── .env.example                   # Template variabili ambiente
+│   ├── .env                           # Template variabili ambiente
 │   ├── sops/                          # SOPS + age (sostituisce Vault)
 │   │   ├── .sops.yaml                 # Configurazione SOPS
 │   │   ├── keys/                      # Age keys (NON committare!)
