@@ -1,0 +1,59 @@
+---
+# Common variables for all environments
+
+# System settings
+timezone: "Europe/Rome"
+locale: "en_US.UTF-8"
+
+# SSH allowed users
+ssh_allowed_users:
+  - ansible
+  - deploy
+
+# Docker settings
+docker_compose_version: "2.24.0"
+docker_compose_dir: "/opt/devops-app"
+docker_data_dir: "/var/lib/docker"
+
+# Application ports
+app_ports:
+  nginx: 80
+  nginx_ssl: 443
+  app: 8000
+  frontend: 3000
+  db: 5432
+
+# Monitoring ports
+monitoring_ports:
+  prometheus: 9090
+  grafana: 3000
+  alertmanager: 9093
+  node_exporter: 9100
+  nginx_exporter: 9113
+  postgres_exporter: 9187
+
+# Logging ports
+logging_ports:
+  loki: 3100
+  fluent_bit: 24224
+
+# Docker network
+docker_network_name: "devops-network"
+
+# Backup settings
+backup_retention_days: 7
+backup_dir: "/var/backups/postgres"
+backup_schedule: "0 2 * * *"  # Daily at 2 AM
+
+# Default environment variables (override in environment-specific files)
+postgres_host: "db"
+postgres_port: 5432
+postgres_db: "Test"
+
+# Grafana settings
+grafana_port: 3000
+grafana_provisioning_dir: "/etc/grafana/provisioning"
+
+# Prometheus settings
+prometheus_retention: "15d"
+prometheus_scrape_interval: "15s"

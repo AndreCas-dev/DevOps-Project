@@ -1,0 +1,127 @@
+---
+# Docker installation tasks for Ubuntu/Debian
+
+- name: Include variables
+  ansible.builtin.include_vars: main.yml
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  become: true
+
+- name: Install required packages for Docker
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - python3-pip
+      - python3-setuptools
+    state: present
+  become: true
+
+- name: Create keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: Add Docker GPG key
+  ansible.builtin.shell: |
+    curl -fsSL {{ docker_apt_gpg_key }} | gpg --dearmor -o /etc/apt/keyrings/docker.asc
+  args:
+    creates: /etc/apt/keyrings/docker.asc
+  become: true
+
+- name: Set permissions on Docker GPG key
+  ansible.builtin.file:
+    path: /etc/apt/keyrings/docker.asc
+    mode: '0644'
+  become: true
+
+- name: Add Docker repository
+  ansible.builtin.apt_repository:
+    repo: "{{ docker_apt_repository }}"
+    state: present
+    filename: docker
+  become: true
+
+- name: Update apt cache after adding Docker repo
+  ansible.builtin.apt:
+    update_cache: true
+  become: true
+
+- name: Install Docker packages
+  ansible.builtin.apt:
+    name: "{{ docker_packages }}"
+    state: present
+  become: true
+  notify: Restart Docker
+
+- name: Ensure Docker service is started and enabled
+  ansible.builtin.systemd:
+    name: docker
+    state: "{{ docker_service_state }}"
+    enabled: "{{ docker_service_enabled }}"
+  become: true
+
+- name: Create docker group
+  ansible.builtin.group:
+    name: docker
+    state: present
+  become: true
+
+- name: Add users to docker group
+  ansible.builtin.user:
+    name: "{{ item }}"
+    groups: docker
+    append: true
+  loop: "{{ docker_users }}"
+  become: true
+  when: docker_users | length > 0
+
+- name: Create Docker daemon configuration directory
+  ansible.builtin.file:
+    path: /etc/docker
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: Configure Docker daemon
+  ansible.builtin.template:
+    src: daemon.json.j2
+    dest: /etc/docker/daemon.json
+    mode: '0644'
+  become: true
+  notify: Restart Docker
+  when: docker_daemon_options is defined
+
+- name: Install Docker SDK for Python
+  ansible.builtin.pip:
+    name:
+      - docker
+      - docker-compose
+    state: present
+  become: true
+
+- name: Verify Docker installation
+  ansible.builtin.command: docker --version
+  register: docker_version
+  changed_when: false
+
+- name: Display Docker version
+  ansible.builtin.debug:
+    msg: "Docker version: {{ docker_version.stdout }}"
+
+- name: Verify Docker Compose installation
+  ansible.builtin.command: docker compose version
+  register: docker_compose_version
+  changed_when: false
+
+- name: Display Docker Compose version
+  ansible.builtin.debug:
+    msg: "Docker Compose version: {{ docker_compose_version.stdout }}"

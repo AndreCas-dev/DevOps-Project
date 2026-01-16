@@ -1,0 +1,19 @@
+---
+# Deploy role handlers
+
+- name: Restart application
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_docker_dir }}"
+    project_name: "{{ compose_project_name }}"
+    files:
+      - "{{ compose_file }}"
+      - "{{ compose_override_file }}"
+    state: restarted
+  become: true
+
+- name: Reload nginx
+  community.docker.docker_container_exec:
+    container: nginx
+    command: nginx -s reload
+  become: true
+  ignore_errors: true

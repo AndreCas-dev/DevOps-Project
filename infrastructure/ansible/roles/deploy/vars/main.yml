@@ -1,0 +1,31 @@
+---
+# Deploy role variables
+
+# Application directories
+app_base_dir: "/opt/devops-app"
+app_docker_dir: "{{ app_base_dir }}/docker"
+app_monitoring_dir: "{{ app_base_dir }}/Monitoring"
+app_logging_dir: "{{ app_base_dir }}/logging"
+app_secrets_dir: "{{ app_base_dir }}/secrets"
+app_volumes_dir: "{{ app_base_dir }}/volumes"
+
+# Docker compose settings
+compose_project_name: "devops"
+compose_file: "docker-compose.yml"
+compose_override_file: "docker-compose.prod.yml"
+
+# Services to deploy (empty = all)
+deploy_services: []
+
+# Deploy options
+pull_images: true
+build_images: true
+remove_orphans: true
+force_recreate: false
+
+# Sync options
+sync_delete: false  # Delete files on remote not in source
+
+# Application owner
+app_user: "{{ ansible_user | default('ansible') }}"
+app_group: "docker"

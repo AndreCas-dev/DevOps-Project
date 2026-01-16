@@ -1,0 +1,39 @@
+---
+# Playbook: Setup Security
+# Description: Applies security hardening to target hosts
+# Usage: ansible-playbook -i inventory/production.ini playbooks/setup-security.yml
+
+- name: Apply Security Hardening
+  hosts: all
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Check if system is supported
+      ansible.builtin.fail:
+        msg: "This playbook only supports Ubuntu and Debian"
+      when: ansible_distribution not in ['Ubuntu', 'Debian']
+
+    - name: Display target system information
+      ansible.builtin.debug:
+        msg: |
+          Target: {{ inventory_hostname }}
+          OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Architecture: {{ ansible_architecture }}
+
+  roles:
+    - role: security
+
+  post_tasks:
+    - name: Security setup completed
+      ansible.builtin.debug:
+        msg: |
+          ========================================
+          Security hardening applied to {{ inventory_hostname }}
+          ========================================
+          - SSH hardened
+          - Firewall configured
+          - Fail2ban enabled
+          - Automatic updates enabled
+          ========================================
+          NOTE: You may need to reconnect if SSH port changed

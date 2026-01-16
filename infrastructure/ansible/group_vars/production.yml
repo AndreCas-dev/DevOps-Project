@@ -1,0 +1,54 @@
+---
+# Production environment variables
+# Sensitive values should be stored in Ansible Vault or external secrets management
+
+# Environment identification
+environment: "production"
+
+# Domain configuration
+domain_name: "example.com"
+ssl_enabled: true
+ssl_certificate_path: "/etc/ssl/certs/{{ domain_name }}.crt"
+ssl_key_path: "/etc/ssl/private/{{ domain_name }}.key"
+
+# PostgreSQL credentials - use vault for actual values
+# ansible-vault encrypt_string 'your_password' --name 'postgres_password'
+postgres_user: "{{ vault_postgres_user | default('postgres') }}"
+postgres_password: "{{ vault_postgres_password | default('changeme') }}"
+postgres_db: "{{ vault_postgres_db | default('production_db') }}"
+
+# Grafana admin credentials - use vault for actual values
+grafana_admin_user: "{{ vault_grafana_admin_user | default('admin') }}"
+grafana_admin_password: "{{ vault_grafana_admin_password | default('changeme') }}"
+
+# PgAdmin credentials - use vault for actual values
+pgadmin_email: "{{ vault_pgadmin_email | default('admin@example.com') }}"
+pgadmin_password: "{{ vault_pgadmin_password | default('changeme') }}"
+
+# Alertmanager settings
+alertmanager_slack_webhook: "{{ vault_slack_webhook | default('') }}"
+alertmanager_slack_channel: "#alerts-production"
+
+# Backup configuration
+backup_enabled: true
+backup_s3_bucket: "{{ vault_backup_s3_bucket | default('') }}"
+backup_s3_access_key: "{{ vault_backup_s3_access_key | default('') }}"
+backup_s3_secret_key: "{{ vault_backup_s3_secret_key | default('') }}"
+backup_retention_days: 30
+
+# Security settings
+firewall_enabled: true
+fail2ban_enabled: true
+ssh_port: 22
+disable_root_login: true
+
+# Resource limits (production)
+app_memory_limit: "512M"
+app_cpu_limit: "1"
+db_memory_limit: "1G"
+db_cpu_limit: "1"
+
+# Docker compose files
+docker_compose_files:
+  - "docker-compose.yml"
+  - "docker-compose.prod.yml"

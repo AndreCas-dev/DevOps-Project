@@ -1,0 +1,37 @@
+---
+# Security role variables
+
+# SSH configuration
+ssh_port: 22
+ssh_permit_root_login: "no"
+ssh_password_authentication: "no"
+ssh_pubkey_authentication: "yes"
+ssh_x11_forwarding: "no"
+ssh_max_auth_tries: 3
+ssh_client_alive_interval: 300
+ssh_client_alive_count_max: 2
+
+# Firewall settings (UFW)
+firewall_enabled: true
+firewall_default_incoming: "deny"
+firewall_default_outgoing: "allow"
+firewall_allowed_ports:
+  - { port: "{{ ssh_port }}", proto: "tcp", comment: "SSH" }
+  - { port: "80", proto: "tcp", comment: "HTTP" }
+  - { port: "443", proto: "tcp", comment: "HTTPS" }
+
+# Fail2ban settings
+fail2ban_enabled: true
+fail2ban_bantime: "1h"
+fail2ban_findtime: "10m"
+fail2ban_maxretry: 5
+fail2ban_ignoreip: "127.0.0.1/8 ::1"
+
+# Automatic security updates
+unattended_upgrades_enabled: true
+unattended_upgrades_mail: ""
+unattended_upgrades_automatic_reboot: false
+
+# System hardening
+disable_ipv6: false
+sysctl_hardening: true

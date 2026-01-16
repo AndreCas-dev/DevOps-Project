@@ -1,0 +1,189 @@
+---
+# Security hardening tasks
+
+- name: Include variables
+  ansible.builtin.include_vars: main.yml
+
+# System updates
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+  become: true
+
+- name: Upgrade all packages
+  ansible.builtin.apt:
+    upgrade: safe
+  become: true
+
+# SSH hardening
+- name: Configure SSH - disable root login
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PermitRootLogin'
+    line: "PermitRootLogin {{ ssh_permit_root_login }}"
+    state: present
+  become: true
+  notify: Restart SSH
+
+- name: Configure SSH - disable password authentication
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PasswordAuthentication'
+    line: "PasswordAuthentication {{ ssh_password_authentication }}"
+    state: present
+  become: true
+  notify: Restart SSH
+
+- name: Configure SSH - enable pubkey authentication
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PubkeyAuthentication'
+    line: "PubkeyAuthentication {{ ssh_pubkey_authentication }}"
+    state: present
+  become: true
+  notify: Restart SSH
+
+- name: Configure SSH - set max auth tries
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?MaxAuthTries'
+    line: "MaxAuthTries {{ ssh_max_auth_tries }}"
+    state: present
+  become: true
+  notify: Restart SSH
+
+- name: Configure SSH - disable X11 forwarding
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?X11Forwarding'
+    line: "X11Forwarding {{ ssh_x11_forwarding }}"
+    state: present
+  become: true
+  notify: Restart SSH
+
+- name: Configure SSH - client alive interval
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?ClientAliveInterval'
+    line: "ClientAliveInterval {{ ssh_client_alive_interval }}"
+    state: present
+  become: true
+  notify: Restart SSH
+
+# UFW Firewall
+- name: Install UFW
+  ansible.builtin.apt:
+    name: ufw
+    state: present
+  become: true
+  when: firewall_enabled
+
+- name: Set UFW default incoming policy
+  community.general.ufw:
+    direction: incoming
+    policy: "{{ firewall_default_incoming }}"
+  become: true
+  when: firewall_enabled
+
+- name: Set UFW default outgoing policy
+  community.general.ufw:
+    direction: outgoing
+    policy: "{{ firewall_default_outgoing }}"
+  become: true
+  when: firewall_enabled
+
+- name: Allow specified ports through UFW
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.port }}"
+    proto: "{{ item.proto }}"
+    comment: "{{ item.comment }}"
+  loop: "{{ firewall_allowed_ports }}"
+  become: true
+  when: firewall_enabled
+
+- name: Enable UFW
+  community.general.ufw:
+    state: enabled
+  become: true
+  when: firewall_enabled
+
+# Fail2ban
+- name: Install Fail2ban
+  ansible.builtin.apt:
+    name: fail2ban
+    state: present
+  become: true
+  when: fail2ban_enabled
+
+- name: Configure Fail2ban jail.local
+  ansible.builtin.template:
+    src: jail.local.j2
+    dest: /etc/fail2ban/jail.local
+    mode: '0644'
+  become: true
+  notify: Restart Fail2ban
+  when: fail2ban_enabled
+
+- name: Enable and start Fail2ban
+  ansible.builtin.systemd:
+    name: fail2ban
+    state: started
+    enabled: true
+  become: true
+  when: fail2ban_enabled
+
+# Automatic security updates
+- name: Install unattended-upgrades
+  ansible.builtin.apt:
+    name:
+      - unattended-upgrades
+      - apt-listchanges
+    state: present
+  become: true
+  when: unattended_upgrades_enabled
+
+- name: Enable automatic security updates
+  ansible.builtin.copy:
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    content: |
+      APT::Periodic::Update-Package-Lists "1";
+      APT::Periodic::Unattended-Upgrade "1";
+      APT::Periodic::AutocleanInterval "7";
+    mode: '0644'
+  become: true
+  when: unattended_upgrades_enabled
+
+# Sysctl hardening
+- name: Apply sysctl security settings
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_set: true
+    state: present
+    reload: true
+  loop:
+    - { name: 'net.ipv4.conf.all.rp_filter', value: '1' }
+    - { name: 'net.ipv4.conf.default.rp_filter', value: '1' }
+    - { name: 'net.ipv4.icmp_echo_ignore_broadcasts', value: '1' }
+    - { name: 'net.ipv4.conf.all.accept_source_route', value: '0' }
+    - { name: 'net.ipv4.conf.default.accept_source_route', value: '0' }
+    - { name: 'net.ipv4.conf.all.send_redirects', value: '0' }
+    - { name: 'net.ipv4.conf.default.send_redirects', value: '0' }
+    - { name: 'net.ipv4.tcp_syncookies', value: '1' }
+    - { name: 'net.ipv4.tcp_max_syn_backlog', value: '2048' }
+    - { name: 'net.ipv4.tcp_synack_retries', value: '2' }
+    - { name: 'net.ipv4.tcp_syn_retries', value: '5' }
+    - { name: 'kernel.randomize_va_space', value: '2' }
+  become: true
+  when: sysctl_hardening
+
+- name: Display security configuration summary
+  ansible.builtin.debug:
+    msg: |
+      Security configuration applied:
+      - SSH hardened (root login: {{ ssh_permit_root_login }}, password auth: {{ ssh_password_authentication }})
+      - Firewall enabled: {{ firewall_enabled }}
+      - Fail2ban enabled: {{ fail2ban_enabled }}
+      - Automatic updates enabled: {{ unattended_upgrades_enabled }}

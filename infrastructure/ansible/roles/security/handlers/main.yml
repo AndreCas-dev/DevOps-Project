@@ -1,0 +1,19 @@
+---
+# Security role handlers
+
+- name: Restart SSH
+  ansible.builtin.systemd:
+    name: sshd
+    state: restarted
+  become: true
+
+- name: Restart Fail2ban
+  ansible.builtin.systemd:
+    name: fail2ban
+    state: restarted
+  become: true
+
+- name: Reload UFW
+  community.general.ufw:
+    state: reloaded
+  become: true

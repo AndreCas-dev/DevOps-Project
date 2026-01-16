@@ -1,0 +1,173 @@
+---
+# Deploy role tasks
+
+- name: Include variables
+  ansible.builtin.include_vars: main.yml
+
+# =============================================================================
+# Prepare directories
+# =============================================================================
+- name: Create application directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+  loop:
+    - "{{ app_base_dir }}"
+    - "{{ app_docker_dir }}"
+    - "{{ app_monitoring_dir }}"
+    - "{{ app_logging_dir }}"
+    - "{{ app_secrets_dir }}"
+    - "{{ app_volumes_dir }}"
+  become: true
+
+# =============================================================================
+# Sync project files
+# =============================================================================
+- name: Sync docker directory
+  ansible.posix.synchronize:
+    src: "{{ playbook_dir }}/../../docker/"
+    dest: "{{ app_docker_dir }}/"
+    delete: "{{ sync_delete }}"
+    rsync_opts:
+      - "--exclude=.git"
+      - "--exclude=__pycache__"
+      - "--exclude=node_modules"
+      - "--exclude=.env"
+  become: true
+  notify: Restart application
+
+- name: Sync Monitoring directory
+  ansible.posix.synchronize:
+    src: "{{ playbook_dir }}/../../Monitoring/"
+    dest: "{{ app_monitoring_dir }}/"
+    delete: "{{ sync_delete }}"
+    rsync_opts:
+      - "--exclude=.git"
+  become: true
+
+- name: Sync logging directory
+  ansible.posix.synchronize:
+    src: "{{ playbook_dir }}/../../logging/"
+    dest: "{{ app_logging_dir }}/"
+    delete: "{{ sync_delete }}"
+    rsync_opts:
+      - "--exclude=.git"
+  become: true
+
+# =============================================================================
+# Create volume directories
+# =============================================================================
+- name: Create volume directories
+  ansible.builtin.file:
+    path: "{{ app_volumes_dir }}/{{ item }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0755'
+  loop:
+    - prometheus-data
+    - grafana-data
+    - alertmanager-data
+    - loki-data
+  become: true
+
+# =============================================================================
+# Deploy environment file
+# =============================================================================
+- name: Deploy environment file
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ app_secrets_dir }}/.env"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0600'
+  become: true
+  no_log: true
+
+# =============================================================================
+# Fix paths in docker-compose for deployment
+# =============================================================================
+- name: Create symlink for secrets directory
+  ansible.builtin.file:
+    src: "{{ app_secrets_dir }}"
+    dest: "{{ app_docker_dir }}/../secrets"
+    state: link
+  become: true
+
+- name: Create symlink for volumes directory
+  ansible.builtin.file:
+    src: "{{ app_volumes_dir }}"
+    dest: "{{ app_docker_dir }}/../volumes"
+    state: link
+  become: true
+
+- name: Create symlink for Monitoring directory
+  ansible.builtin.file:
+    src: "{{ app_monitoring_dir }}"
+    dest: "{{ app_docker_dir }}/../Monitoring"
+    state: link
+  become: true
+
+- name: Create symlink for logging directory
+  ansible.builtin.file:
+    src: "{{ app_logging_dir }}"
+    dest: "{{ app_docker_dir }}/../logging"
+    state: link
+  become: true
+
+# =============================================================================
+# Deploy with Docker Compose
+# =============================================================================
+- name: Pull Docker images
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_docker_dir }}"
+    project_name: "{{ compose_project_name }}"
+    files:
+      - "{{ compose_file }}"
+      - "{{ compose_override_file }}"
+    state: present
+    pull: always
+  become: true
+  when: pull_images
+
+- name: Build and deploy application
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_docker_dir }}"
+    project_name: "{{ compose_project_name }}"
+    files:
+      - "{{ compose_file }}"
+      - "{{ compose_override_file }}"
+    state: present
+    build: "{{ 'always' if build_images else 'never' }}"
+    remove_orphans: "{{ remove_orphans }}"
+    recreate: "{{ 'always' if force_recreate else 'auto' }}"
+    services: "{{ deploy_services if deploy_services | length > 0 else omit }}"
+  become: true
+  register: deploy_result
+
+- name: Display deployment result
+  ansible.builtin.debug:
+    msg: |
+      Deployment completed!
+      Changed: {{ deploy_result.changed }}
+
+# =============================================================================
+# Health checks
+# =============================================================================
+- name: Wait for services to be healthy
+  ansible.builtin.uri:
+    url: "http://localhost:{{ nginx_port | default(80) }}"
+    method: GET
+    status_code: [200, 301, 302]
+  register: health_check
+  retries: 10
+  delay: 5
+  until: health_check.status in [200, 301, 302]
+  ignore_errors: true
+
+- name: Display health check result
+  ansible.builtin.debug:
+    msg: "Application is {{ 'healthy' if health_check.status is defined and health_check.status in [200, 301, 302] else 'not responding yet' }}"

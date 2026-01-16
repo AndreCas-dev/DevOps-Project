@@ -1,0 +1,28 @@
+# Fail2ban configuration
+# Managed by Ansible - do not edit manually
+
+[DEFAULT]
+bantime = {{ fail2ban_bantime }}
+findtime = {{ fail2ban_findtime }}
+maxretry = {{ fail2ban_maxretry }}
+ignoreip = {{ fail2ban_ignoreip }}
+backend = auto
+usedns = warn
+logencoding = auto
+enabled = false
+
+[sshd]
+enabled = true
+port = {{ ssh_port }}
+filter = sshd
+logpath = /var/log/auth.log
+maxretry = {{ fail2ban_maxretry }}
+bantime = {{ fail2ban_bantime }}
+
+[sshd-ddos]
+enabled = true
+port = {{ ssh_port }}
+filter = sshd-ddos
+logpath = /var/log/auth.log
+maxretry = 6
+bantime = {{ fail2ban_bantime }}

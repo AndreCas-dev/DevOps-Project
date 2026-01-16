@@ -1,0 +1,55 @@
+---
+# Playbook: Setup Docker
+# Description: Installs Docker and Docker Compose on target hosts
+# Usage: ansible-playbook -i inventory/local.ini playbooks/setup-docker.yml
+
+- name: Setup Docker on all hosts
+  hosts: all
+  become: true
+  gather_facts: true
+
+  pre_tasks:
+    - name: Check if system is supported
+      ansible.builtin.fail:
+        msg: "This playbook only supports Ubuntu and Debian"
+      when: ansible_distribution not in ['Ubuntu', 'Debian']
+
+    - name: Display target system information
+      ansible.builtin.debug:
+        msg: |
+          Target: {{ inventory_hostname }}
+          OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Architecture: {{ ansible_architecture }}
+
+  roles:
+    - role: docker
+
+  post_tasks:
+    - name: Verify Docker is running
+      ansible.builtin.systemd:
+        name: docker
+        state: started
+      register: docker_service_status
+
+    - name: Run Docker hello-world test
+      ansible.builtin.command: docker run --rm hello-world
+      register: docker_hello_world
+      changed_when: false
+      ignore_errors: true
+
+    - name: Display Docker test result
+      ansible.builtin.debug:
+        msg: "Docker installation successful!"
+      when: docker_hello_world.rc == 0
+
+    - name: Warning if Docker test failed
+      ansible.builtin.debug:
+        msg: "Docker hello-world test failed. Please check Docker installation."
+      when: docker_hello_world.rc != 0
+
+  handlers:
+    - name: Restart Docker
+      ansible.builtin.systemd:
+        name: docker
+        state: restarted
+        daemon_reload: true

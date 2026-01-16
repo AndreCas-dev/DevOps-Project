@@ -1,0 +1,63 @@
+---
+# Playbook: Deploy Application
+# Description: Deploys the DevOps application stack using Docker Compose
+# Usage: ansible-playbook -i inventory/production.ini playbooks/deploy-app.yml
+
+- name: Deploy DevOps Application
+  hosts: webservers
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - ../group_vars/all.yml
+    - ../group_vars/vault.yml
+
+  pre_tasks:
+    - name: Check if Docker is installed
+      ansible.builtin.command: docker --version
+      register: docker_check
+      changed_when: false
+      failed_when: docker_check.rc != 0
+
+    - name: Check if Docker Compose is available
+      ansible.builtin.command: docker compose version
+      register: compose_check
+      changed_when: false
+      failed_when: compose_check.rc != 0
+
+    - name: Display deployment information
+      ansible.builtin.debug:
+        msg: |
+          Deploying to: {{ inventory_hostname }}
+          Environment: {{ environment | default('production') }}
+          Docker: {{ docker_check.stdout }}
+          Compose: {{ compose_check.stdout }}
+
+  roles:
+    - role: deploy
+      vars:
+        pull_images: true
+        build_images: true
+        force_recreate: "{{ force_recreate | default(false) }}"
+
+  post_tasks:
+    - name: Get running containers
+      ansible.builtin.command: docker ps --format "table {% raw %}{{.Names}}\t{{.Status}}\t{{.Ports}}{% endraw %}"
+      register: containers_status
+      changed_when: false
+
+    - name: Display running containers
+      ansible.builtin.debug:
+        msg: "{{ containers_status.stdout_lines }}"
+
+    - name: Deployment summary
+      ansible.builtin.debug:
+        msg: |
+          ========================================
+          Deployment completed successfully!
+          ========================================
+          Host: {{ inventory_hostname }}
+          Application URL: http://{{ ansible_host | default(inventory_hostname) }}:{{ nginx_port | default(80) }}
+          Grafana URL: http://{{ ansible_host | default(inventory_hostname) }}:{{ nginx_port | default(80) }}/grafana
+          Prometheus URL: http://{{ ansible_host | default(inventory_hostname) }}:{{ nginx_port | default(80) }}/prometheus
+          ========================================

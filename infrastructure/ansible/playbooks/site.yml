@@ -1,0 +1,73 @@
+---
+# Playbook: Site (Full Setup)
+# Description: Complete server setup - Security, Docker, and Application deployment
+# Usage: ansible-playbook -i inventory/production.ini playbooks/site.yml
+
+- name: Full Server Setup and Deployment
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - ../group_vars/all.yml
+    - ../group_vars/vault.yml
+
+  pre_tasks:
+    - name: Check if system is supported
+      ansible.builtin.fail:
+        msg: "This playbook only supports Ubuntu and Debian"
+      when: ansible_distribution not in ['Ubuntu', 'Debian']
+
+    - name: Display setup information
+      ansible.builtin.debug:
+        msg: |
+          ========================================
+          Full Server Setup Starting
+          ========================================
+          Target: {{ inventory_hostname }}
+          OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Environment: {{ environment | default('production') }}
+          ========================================
+
+  roles:
+    - role: security
+      tags: [security]
+
+    - role: docker
+      tags: [docker]
+
+    - role: deploy
+      tags: [deploy]
+      when: "'webservers' in group_names"
+
+  post_tasks:
+    - name: Get system status
+      ansible.builtin.shell: |
+        echo "=== Docker Status ===" && \
+        docker ps --format "table {% raw %}{{.Names}}\t{{.Status}}{% endraw %}" 2>/dev/null || echo "Docker not running" && \
+        echo "" && \
+        echo "=== Disk Usage ===" && \
+        df -h / | tail -1 && \
+        echo "" && \
+        echo "=== Memory ===" && \
+        free -h | head -2
+      register: system_status
+      changed_when: false
+      ignore_errors: true
+
+    - name: Display system status
+      ansible.builtin.debug:
+        msg: "{{ system_status.stdout_lines }}"
+      when: system_status.stdout_lines is defined
+
+    - name: Setup completed
+      ansible.builtin.debug:
+        msg: |
+          ========================================
+          Server Setup Completed!
+          ========================================
+          Host: {{ inventory_hostname }}
+          Security: Applied
+          Docker: Installed
+          Application: {{ 'Deployed' if 'webservers' in group_names else 'Skipped (not a webserver)' }}
+          ========================================
