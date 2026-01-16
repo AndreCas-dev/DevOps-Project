@@ -1,7 +1,7 @@
 ---
 # Playbook: Deploy Application
 # Description: Deploys the DevOps application stack using Docker Compose
-# Usage: ansible-playbook -i inventory/production.ini playbooks/deploy-app.yml
+# Usage: ./run-playbook.sh -e production -p playbooks/deploy-app.yml
 
 - name: Deploy DevOps Application
   hosts: webservers
@@ -10,7 +10,7 @@
 
   vars_files:
     - ../group_vars/all.yml
-    - ../group_vars/vault.yml
+    # Secrets are injected via SOPS by run-playbook.sh
 
   pre_tasks:
     - name: Check if Docker is installed
