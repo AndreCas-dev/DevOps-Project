@@ -6,7 +6,7 @@
 environment: "production"
 
 # Domain configuration
-domain_name: "example.com"
+domain_name: "test-server"
 ssl_enabled: true
 ssl_certificate_path: "/etc/ssl/certs/{{ domain_name }}.crt"
 ssl_key_path: "/etc/ssl/private/{{ domain_name }}.key"

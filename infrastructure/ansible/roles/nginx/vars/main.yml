@@ -5,6 +5,9 @@
 nginx_config_dir: "{{ app_docker_dir | default('/opt/devops-app/docker') }}/nginx"
 nginx_conf_d_dir: "{{ nginx_config_dir }}/conf.d"
 
+# Server name (domain or IP)
+nginx_server_name: "{{ domain_name | default(ansible_host) | default('localhost') }}"
+
 # Nginx settings
 nginx_worker_processes: "auto"
 nginx_worker_connections: 1024

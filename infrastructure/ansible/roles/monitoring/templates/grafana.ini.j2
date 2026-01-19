@@ -1,8 +1,8 @@
 [server]
 protocol = http
 http_port = 3000
-domain = {{ grafana_domain | default('localhost') }}
-root_url = %(protocol)s://%(domain)s{{ grafana_external_url }}
+domain = {{ grafana_domain }}
+root_url = {{ 'https' if ssl_enabled | default(false) else 'http' }}://{{ grafana_domain }}{{ grafana_external_url }}
 serve_from_sub_path = true
 
 [database]
