@@ -26,33 +26,33 @@
 # =============================================================================
 # Sync project files
 # =============================================================================
-- name: Sync docker directory
-  ansible.posix.synchronize:
+- name: Copy docker directory
+  ansible.builtin.copy:
     src: "{{ project_root }}/docker/"
     dest: "{{ app_docker_dir }}/"
-    delete: "{{ sync_delete }}"
-    rsync_opts:
-      - "--exclude=.git"
-      - "--exclude=__pycache__"
-      - "--exclude=node_modules"
-      - "--exclude=.env"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: preserve
+  become: true
   notify: Restart application
 
-- name: Sync monitoring directory
-  ansible.posix.synchronize:
+- name: Copy monitoring directory
+  ansible.builtin.copy:
     src: "{{ project_root }}/monitoring/"
     dest: "{{ app_monitoring_dir }}/"
-    delete: "{{ sync_delete }}"
-    rsync_opts:
-      - "--exclude=.git"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: preserve
+  become: true
 
-- name: Sync logging directory
-  ansible.posix.synchronize:
+- name: Copy logging directory
+  ansible.builtin.copy:
     src: "{{ project_root }}/logging/"
     dest: "{{ app_logging_dir }}/"
-    delete: "{{ sync_delete }}"
-    rsync_opts:
-      - "--exclude=.git"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: preserve
+  become: true
 
 # =============================================================================
 # Create volume directories with correct permissions
