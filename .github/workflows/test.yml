@@ -36,19 +36,19 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        working-directory: ./Docker/backend
+        working-directory: ./docker/backend
         run: npm install
 
       - name: Build TypeScript
-        working-directory: ./Docker/backend
+        working-directory: ./docker/backend
         run: npm run build
 
       - name: Run linter
-        working-directory: ./Docker/backend
+        working-directory: ./docker/backend
         run: npm run lint --if-present || true
 
       - name: Run tests
-        working-directory: ./Docker/backend
+        working-directory: ./docker/backend
         env:
           POSTGRES_HOST: localhost
           POSTGRES_PORT: 5432
@@ -71,19 +71,19 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        working-directory: ./Docker/frontend
+        working-directory: ./docker/frontend
         run: npm install
 
       - name: Build
-        working-directory: ./Docker/frontend
+        working-directory: ./docker/frontend
         run: npm run build --if-present || true
 
       - name: Run linter
-        working-directory: ./Docker/frontend
+        working-directory: ./docker/frontend
         run: npm run lint --if-present || true
 
       - name: Run tests
-        working-directory: ./Docker/frontend
+        working-directory: ./docker/frontend
         run: npm test --if-present || true
 
   test-success:
