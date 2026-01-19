@@ -4,11 +4,42 @@
 - name: Include variables
   ansible.builtin.include_vars: main.yml
 
+# Clean up any broken Docker repository first
+- name: Remove broken Docker GPG key if exists
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/apt/keyrings/docker.asc
+    - /etc/apt/keyrings/docker.gpg
+    - /usr/share/keyrings/docker-archive-keyring.gpg
+  become: true
+  ignore_errors: true
+
+- name: Remove broken Docker repository if exists
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/apt/sources.list.d/docker.list
+    - /etc/apt/sources.list.d/docker.sources
+  become: true
+  ignore_errors: true
+
+- name: Remove Docker entries from sources.list
+  ansible.builtin.lineinfile:
+    path: /etc/apt/sources.list
+    regexp: '.*download\.docker\.com.*'
+    state: absent
+  become: true
+  ignore_errors: true
+
 - name: Update apt cache
   ansible.builtin.apt:
     update_cache: true
     cache_valid_time: 3600
   become: true
+  ignore_errors: true
 
 - name: Install required packages for Docker
   ansible.builtin.apt:
@@ -32,16 +63,11 @@
 
 - name: Add Docker GPG key
   ansible.builtin.shell: |
-    curl -fsSL {{ docker_apt_gpg_key }} | gpg --dearmor -o /etc/apt/keyrings/docker.asc
+    curl -fsSL {{ docker_apt_gpg_key }} -o /etc/apt/keyrings/docker.asc
+    chmod 644 /etc/apt/keyrings/docker.asc
+  become: true
   args:
     creates: /etc/apt/keyrings/docker.asc
-  become: true
-
-- name: Set permissions on Docker GPG key
-  ansible.builtin.file:
-    path: /etc/apt/keyrings/docker.asc
-    mode: '0644'
-  become: true
 
 - name: Add Docker repository
   ansible.builtin.apt_repository:
@@ -99,15 +125,7 @@
   become: true
   notify: Restart Docker
   when: docker_daemon_options is defined
-
-- name: Install Docker SDK for Python
-  ansible.builtin.pip:
-    name:
-      - docker
-      - docker-compose
-    state: present
-  become: true
-
+  
 - name: Verify Docker installation
   ansible.builtin.command: docker --version
   register: docker_version

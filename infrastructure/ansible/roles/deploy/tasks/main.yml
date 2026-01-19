@@ -36,7 +36,6 @@
       - "--exclude=__pycache__"
       - "--exclude=node_modules"
       - "--exclude=.env"
-  become: true
   notify: Restart application
 
 - name: Sync monitoring directory
@@ -46,7 +45,6 @@
     delete: "{{ sync_delete }}"
     rsync_opts:
       - "--exclude=.git"
-  become: true
 
 - name: Sync logging directory
   ansible.posix.synchronize:
@@ -55,7 +53,6 @@
     delete: "{{ sync_delete }}"
     rsync_opts:
       - "--exclude=.git"
-  become: true
 
 # =============================================================================
 # Create volume directories with correct permissions

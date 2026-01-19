@@ -4,6 +4,50 @@
 - name: Include variables
   ansible.builtin.include_vars: main.yml
 
+# Clean up broken repositories before apt update
+- name: Find all Docker-related apt source files
+  ansible.builtin.find:
+    paths: /etc/apt/sources.list.d
+    patterns: "*docker*"
+  register: docker_source_files
+  become: true
+  ignore_errors: true
+
+- name: Remove all Docker-related apt source files
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ docker_source_files.files | default([]) }}"
+  become: true
+  ignore_errors: true
+
+- name: Find and remove files containing docker.com in sources.list.d
+  ansible.builtin.shell: |
+    grep -l "docker.com" /etc/apt/sources.list.d/* 2>/dev/null | xargs -r rm -f
+  become: true
+  ignore_errors: true
+  changed_when: false
+
+- name: Remove broken Docker GPG keys if exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/apt/keyrings/docker.asc
+    - /etc/apt/keyrings/docker.gpg
+    - /usr/share/keyrings/docker-archive-keyring.gpg
+    - /etc/apt/trusted.gpg.d/docker.gpg
+  become: true
+  ignore_errors: true
+
+- name: Remove Docker entries from sources.list
+  ansible.builtin.lineinfile:
+    path: /etc/apt/sources.list
+    regexp: '.*docker\.com.*'
+    state: absent
+  become: true
+  ignore_errors: true
+
 # System updates
 - name: Update apt cache
   ansible.builtin.apt:
