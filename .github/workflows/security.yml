@@ -54,7 +54,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build backend image for scanning
-        run: docker build -t backend-scan:latest ./Docker/backend || true
+        run: docker build -t backend-scan:latest ./docker/backend || true
 
       - name: Run Trivy vulnerability scanner (backend)
         uses: aquasecurity/trivy-action@master
@@ -73,7 +73,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build frontend image for scanning
-        run: docker build -t frontend-scan:latest ./Docker/frontend || true
+        run: docker build -t frontend-scan:latest ./docker/frontend || true
 
       - name: Run Trivy vulnerability scanner (frontend)
         uses: aquasecurity/trivy-action@master
@@ -97,13 +97,13 @@ jobs:
           node-version: '20'
 
       - name: Check backend npm dependencies
-        working-directory: ./Docker/backend
+        working-directory: ./docker/backend
         run: |
           npm install
           npm audit --audit-level=high || true
 
       - name: Check frontend npm dependencies
-        working-directory: ./Docker/frontend
+        working-directory: ./docker/frontend
         run: |
           npm install
           npm audit --audit-level=high || true
