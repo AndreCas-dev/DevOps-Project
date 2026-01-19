@@ -125,7 +125,10 @@ app.delete('/items/:id', async (req: Request, res: Response) => {
   }
 });
 
-// Start server
+// Export app for testing
+export { app };
+
+// Start server (only if run directly)
 async function start() {
   try {
     await initDatabase();
@@ -138,4 +141,6 @@ async function start() {
   }
 }
 
-start();
+if (require.main === module) {
+  start();
+}
