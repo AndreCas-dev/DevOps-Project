@@ -73,7 +73,7 @@ describe('API Routes', () => {
   describe('GET /items', () => {
     it('should return list of items', async () => {
       const mockItems = [
-        { id: 1, name: 'Test Item', description: 'Test', is_active: true, created_at: new Date() },
+        { id: 1, name: 'Test Item', description: 'Test', is_active: true, created_at: '2024-01-01T00:00:00.000Z' },
       ];
       (mockPool.query as jest.Mock).mockResolvedValue({ rows: mockItems });
 
@@ -96,7 +96,7 @@ describe('API Routes', () => {
   describe('POST /items', () => {
     it('should create a new item', async () => {
       const newItem = { name: 'New Item', description: 'Description' };
-      const createdItem = { id: 1, ...newItem, is_active: true, created_at: new Date() };
+      const createdItem = { id: 1, ...newItem, is_active: true, created_at: '2024-01-01T00:00:00.000Z' };
       (mockPool.query as jest.Mock).mockResolvedValue({ rows: [createdItem] });
 
       const response = await request(app)
