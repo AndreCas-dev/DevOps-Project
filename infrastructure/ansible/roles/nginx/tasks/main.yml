@@ -1,0 +1,92 @@
+---
+# Nginx role tasks
+# Sets up Nginx as reverse proxy
+
+- name: Include variables
+  ansible.builtin.include_vars: main.yml
+
+# =============================================================================
+# Create nginx directories
+# =============================================================================
+- name: Create nginx directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ app_user | default('deploy') }}"
+    group: "{{ app_group | default('deploy') }}"
+    mode: '0755'
+  loop:
+    - "{{ nginx_config_dir }}"
+    - "{{ nginx_conf_d_dir }}"
+  become: true
+
+# =============================================================================
+# Deploy Nginx configuration
+# =============================================================================
+- name: Deploy Nginx main configuration
+  ansible.builtin.template:
+    src: nginx.conf.j2
+    dest: "{{ nginx_config_dir }}/nginx.conf"
+    owner: "{{ app_user | default('deploy') }}"
+    group: "{{ app_group | default('deploy') }}"
+    mode: '0644'
+  become: true
+  notify:
+    - Test Nginx config
+    - Reload Nginx
+
+- name: Deploy Nginx default server configuration
+  ansible.builtin.template:
+    src: default.conf.j2
+    dest: "{{ nginx_conf_d_dir }}/default.conf"
+    owner: "{{ app_user | default('deploy') }}"
+    group: "{{ app_group | default('deploy') }}"
+    mode: '0644'
+  become: true
+  notify:
+    - Test Nginx config
+    - Reload Nginx
+
+# =============================================================================
+# Deploy SSL configuration (optional)
+# =============================================================================
+- name: Deploy SSL configuration
+  ansible.builtin.template:
+    src: ssl.conf.j2
+    dest: "{{ nginx_conf_d_dir }}/ssl.conf"
+    owner: "{{ app_user | default('deploy') }}"
+    group: "{{ app_group | default('deploy') }}"
+    mode: '0644'
+  become: true
+  when: nginx_ssl_enabled | default(false)
+  notify:
+    - Test Nginx config
+    - Reload Nginx
+
+# =============================================================================
+# Verify Nginx health
+# =============================================================================
+- name: Wait for Nginx to be healthy
+  ansible.builtin.uri:
+    url: "{{ nginx_health_url }}"
+    method: GET
+    status_code: [200]
+  register: nginx_health
+  retries: 10
+  delay: 3
+  until: nginx_health.status == 200
+  ignore_errors: true
+  when: verify_health | default(true)
+
+- name: Display Nginx status
+  ansible.builtin.debug:
+    msg: |
+      ========================================
+      Nginx Status
+      ========================================
+      Health: {{ 'Healthy' if nginx_health.status | default(0) == 200 else 'Not responding' }}
+      Config: {{ nginx_config_dir }}/nginx.conf
+      ========================================
+      Access URL: http://{{ ansible_host | default('localhost') }}
+      ========================================
+  when: verify_health | default(true)

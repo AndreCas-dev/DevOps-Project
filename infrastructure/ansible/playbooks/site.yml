@@ -36,6 +36,14 @@
     - role: docker
       tags: [docker]
 
+    - role: nginx
+      tags: [nginx]
+      when: "'webservers' in group_names"
+
+    - role: monitoring
+      tags: [monitoring]
+      when: "'webservers' in group_names"
+
     - role: deploy
       tags: [deploy]
       when: "'webservers' in group_names"
@@ -69,5 +77,7 @@
           Host: {{ inventory_hostname }}
           Security: Applied
           Docker: Installed
+          Nginx: {{ 'Configured' if 'webservers' in group_names else 'Skipped (not a webserver)' }}
+          Monitoring: {{ 'Configured' if 'webservers' in group_names else 'Skipped (not a webserver)' }}
           Application: {{ 'Deployed' if 'webservers' in group_names else 'Skipped (not a webserver)' }}
           ========================================

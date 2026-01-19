@@ -1,0 +1,56 @@
+user nginx;
+worker_processes {{ nginx_worker_processes }};
+error_log /var/log/nginx/error.log warn;
+pid /var/run/nginx.pid;
+
+events {
+    worker_connections {{ nginx_worker_connections }};
+    use epoll;
+    multi_accept on;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    # Logging format (JSON for Fluent Bit)
+    log_format json_combined escape=json
+        '{'
+            '"time":"$time_iso8601",'
+            '"remote_addr":"$remote_addr",'
+            '"method":"$request_method",'
+            '"uri":"$request_uri",'
+            '"status":$status,'
+            '"body_bytes_sent":$body_bytes_sent,'
+            '"request_time":$request_time,'
+            '"upstream_response_time":"$upstream_response_time",'
+            '"http_referrer":"$http_referer",'
+            '"http_user_agent":"$http_user_agent"'
+        '}';
+
+    access_log /var/log/nginx/access.log json_combined;
+
+    # Performance settings
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout {{ nginx_keepalive_timeout }};
+    types_hash_max_size 2048;
+
+{% if nginx_gzip_enabled %}
+    # Gzip compression
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level {{ nginx_gzip_comp_level }};
+    gzip_types {{ nginx_gzip_types | join(' ') }};
+{% endif %}
+
+{% if nginx_rate_limit_enabled %}
+    # Rate limiting
+    {{ nginx_rate_limit_zone }};
+{% endif %}
+
+    # Include virtual hosts
+    include /etc/nginx/conf.d/*.conf;
+}

@@ -1,0 +1,66 @@
+---
+# Playbook: Setup Monitoring
+# Description: Deploy and configure the monitoring stack (Prometheus, Grafana, Alertmanager)
+# Usage: ./run-playbook.sh -e production -p playbooks/setup-monitoring.yml
+
+- name: Setup Monitoring Stack
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars_files:
+    - ../group_vars/all.yml
+
+  pre_tasks:
+    - name: Display monitoring setup information
+      ansible.builtin.debug:
+        msg: |
+          ========================================
+          Monitoring Stack Setup Starting
+          ========================================
+          Target: {{ inventory_hostname }}
+          OS: {{ ansible_distribution }} {{ ansible_distribution_version }}
+          Environment: {{ environment | default('production') }}
+          ========================================
+
+    - name: Verify Docker is running
+      ansible.builtin.command: docker info
+      register: docker_info
+      changed_when: false
+      failed_when: docker_info.rc != 0
+
+  roles:
+    - role: monitoring
+      tags: [monitoring]
+
+  post_tasks:
+    - name: Get monitoring services status
+      ansible.builtin.shell: |
+        echo "=== Monitoring Services ===" && \
+        docker ps --filter "name=prometheus" --filter "name=grafana" --filter "name=alertmanager" --filter "name=node-exporter" --format "table {% raw %}{{.Names}}\t{{.Status}}{% endraw %}" 2>/dev/null || echo "Services not running"
+      register: monitoring_status
+      changed_when: false
+      ignore_errors: true
+
+    - name: Display monitoring services status
+      ansible.builtin.debug:
+        msg: "{{ monitoring_status.stdout_lines }}"
+      when: monitoring_status.stdout_lines is defined
+
+    - name: Monitoring setup completed
+      ansible.builtin.debug:
+        msg: |
+          ========================================
+          Monitoring Setup Completed!
+          ========================================
+          Host: {{ inventory_hostname }}
+
+          Access URLs:
+          - Prometheus: http://{{ ansible_host | default('localhost') }}/prometheus/
+          - Grafana: http://{{ ansible_host | default('localhost') }}/grafana/
+          - Alertmanager: http://{{ ansible_host | default('localhost') }}/alertmanager/
+
+          Default Grafana credentials:
+          - User: admin
+          - Password: (set in secrets)
+          ========================================

@@ -1,0 +1,182 @@
+# Upstream for FastAPI application
+upstream app {
+    server app:8000;
+    keepalive 32;
+}
+
+# Upstream for React frontend
+upstream frontend {
+    server frontend:3000;
+    keepalive 32;
+}
+
+server {
+    listen 80;
+    server_name {{ nginx_server_name | default('localhost') }};
+
+    # Security headers
+{% for header, value in nginx_security_headers.items() %}
+    add_header {{ header }} "{{ value }}" always;
+{% endfor %}
+
+    # Health check endpoint
+    location /nginx-health {
+        access_log off;
+        return 200 "healthy\n";
+        add_header Content-Type text/plain;
+    }
+
+    # Nginx stub_status for nginx-exporter
+    location /stub_status {
+        stub_status;
+        allow 172.16.0.0/12;
+        allow 172.18.0.0/16;
+        allow 192.168.0.0/16;
+        allow 10.0.0.0/8;
+        deny all;
+    }
+
+    # API proxy - FastAPI backend
+    location /api/ {
+        proxy_pass http://app/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+
+        proxy_connect_timeout {{ nginx_proxy_connect_timeout }};
+        proxy_send_timeout {{ nginx_proxy_send_timeout }};
+        proxy_read_timeout {{ nginx_proxy_read_timeout }};
+{% if nginx_rate_limit_enabled %}
+        limit_req zone=api burst={{ nginx_rate_limit_burst }} nodelay;
+{% endif %}
+    }
+
+    # Prometheus
+    location /prometheus/ {
+        proxy_pass http://prometheus:9090/prometheus/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+    }
+
+    # Alertmanager
+    location /alertmanager/ {
+        proxy_pass http://alertmanager:9093/alertmanager/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+    }
+
+    # Grafana
+    location /grafana/ {
+        proxy_pass http://grafana:3000/grafana/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+    }
+
+    # Fluent Bit
+    location /fluent-bit/ {
+        proxy_pass http://fluent-bit:2020/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+    }
+
+    # Node Exporter
+    location /node-exporter/ {
+        proxy_pass http://node-exporter:9100/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+    }
+
+    # Loki
+    location /loki/ {
+        proxy_pass http://loki:3100/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+    }
+
+    # PgAdmin
+    location /pgadmin/ {
+        proxy_pass http://pgadmin:80/pgadmin/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Script-Name /pgadmin;
+        proxy_redirect off;
+    }
+
+    # Metrics endpoint - direct pass to app
+    location /metrics {
+        proxy_pass http://app/metrics;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+    }
+
+    # Health endpoint - direct pass to app
+    location /health {
+        proxy_pass http://app/health;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+    }
+
+    # Swagger docs
+    location /docs {
+        proxy_pass http://app/docs;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+    }
+
+    location /openapi.json {
+        proxy_pass http://app/openapi.json;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+    }
+
+    # Frontend - React app (default)
+    location / {
+        proxy_pass http://frontend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+    }
+
+    # Error pages
+    error_page 500 502 503 504 /50x.html;
+    location = /50x.html {
+        root /usr/share/nginx/html;
+    }
+}

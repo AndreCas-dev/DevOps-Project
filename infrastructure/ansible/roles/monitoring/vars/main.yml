@@ -1,0 +1,41 @@
+---
+# Monitoring role variables
+# Note: These are default values. Override them in group_vars or playbook vars.
+
+# Monitoring stack directories
+monitoring_base_dir: "{{ app_monitoring_dir | default('/opt/devops-app/monitoring') }}"
+prometheus_config_dir: "{{ monitoring_base_dir }}/prometheus"
+grafana_config_dir: "{{ monitoring_base_dir }}/grafana"
+alertmanager_config_dir: "{{ monitoring_base_dir }}/alertmanager"
+
+# Volume directories
+prometheus_data_dir: "{{ app_volumes_dir | default('/opt/devops-app/volumes') }}/prometheus-data"
+grafana_data_dir: "{{ app_volumes_dir | default('/opt/devops-app/volumes') }}/grafana-data"
+alertmanager_data_dir: "{{ app_volumes_dir | default('/opt/devops-app/volumes') }}/alertmanager-data"
+
+# Prometheus settings - use _default suffix to avoid recursion
+monitoring_prometheus_retention: "15d"
+monitoring_prometheus_scrape_interval: "15s"
+prometheus_external_url: "/prometheus"
+
+# Grafana settings - use _default suffix to avoid recursion
+monitoring_grafana_admin_user: "admin"
+monitoring_grafana_admin_password: "admin"
+grafana_external_url: "/grafana/"
+grafana_allow_sign_up: false
+
+# Alertmanager settings
+alertmanager_external_url: "/alertmanager"
+monitoring_slack_webhook_url: ""
+monitoring_slack_channel: "#alerts"
+
+# User/group IDs for container volumes
+prometheus_uid: "65534"
+prometheus_gid: "65534"
+grafana_uid: "472"
+grafana_gid: "472"
+
+# Health check endpoints
+prometheus_health_url: "http://localhost:9090/prometheus/-/healthy"
+grafana_health_url: "http://localhost:3000/grafana/api/health"
+alertmanager_health_url: "http://localhost:9093/alertmanager/-/healthy"

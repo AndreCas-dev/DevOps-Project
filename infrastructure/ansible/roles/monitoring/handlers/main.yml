@@ -1,0 +1,48 @@
+---
+# Monitoring role handlers
+
+- name: Restart Prometheus
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_docker_dir }}"
+    project_name: "{{ compose_project_name | default('devops') }}"
+    services:
+      - prometheus
+    state: restarted
+  become: true
+
+- name: Restart Grafana
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_docker_dir }}"
+    project_name: "{{ compose_project_name | default('devops') }}"
+    services:
+      - grafana
+    state: restarted
+  become: true
+
+- name: Restart Alertmanager
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_docker_dir }}"
+    project_name: "{{ compose_project_name | default('devops') }}"
+    services:
+      - alertmanager
+    state: restarted
+  become: true
+
+- name: Reload Prometheus config
+  ansible.builtin.uri:
+    url: "http://localhost:9090/prometheus/-/reload"
+    method: POST
+    status_code: [200, 204]
+  ignore_errors: true
+
+- name: Restart monitoring stack
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_docker_dir }}"
+    project_name: "{{ compose_project_name | default('devops') }}"
+    services:
+      - prometheus
+      - grafana
+      - alertmanager
+      - node-exporter
+    state: restarted
+  become: true

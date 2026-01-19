@@ -1,0 +1,25 @@
+---
+# Nginx role handlers
+
+- name: Restart Nginx
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_docker_dir }}"
+    project_name: "{{ compose_project_name | default('devops') }}"
+    services:
+      - nginx
+    state: restarted
+  become: true
+
+- name: Reload Nginx
+  ansible.builtin.command:
+    cmd: docker exec nginx nginx -s reload
+  become: true
+  ignore_errors: true
+
+- name: Test Nginx config
+  ansible.builtin.command:
+    cmd: docker exec nginx nginx -t
+  become: true
+  register: nginx_test
+  changed_when: false
+  failed_when: nginx_test.rc != 0
