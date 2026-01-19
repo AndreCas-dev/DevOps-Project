@@ -35,10 +35,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './docker/backend/package-lock.json'
 
       - name: Install dependencies
         working-directory: ./docker/backend
-        run: npm install
+        run: npm ci
 
       - name: Build TypeScript
         working-directory: ./docker/backend
@@ -70,10 +72,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './docker/frontend/package-lock.json'
 
       - name: Install dependencies
         working-directory: ./docker/frontend
-        run: npm install
+        run: npm ci
 
       - name: Build
         working-directory: ./docker/frontend
@@ -100,10 +104,12 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './tests/e2e/package-lock.json'
 
       - name: Install dependencies
         working-directory: ./tests/e2e
-        run: npm install
+        run: npm ci
 
       - name: Install Playwright browsers
         working-directory: ./tests/e2e
