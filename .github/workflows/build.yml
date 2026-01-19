@@ -4,12 +4,12 @@ on:
   push:
     branches: [main, develop]
     paths:
-      - 'docker/**'
+      - 'Docker/**'
       - '.github/workflows/build.yml'
   pull_request:
     branches: [main, develop]
     paths:
-      - 'docker/**'
+      - 'Docker/**'
 
 env:
   REGISTRY: ghcr.io
@@ -52,8 +52,8 @@ jobs:
       - name: Build and push Backend image
         uses: docker/build-push-action@v5
         with:
-          context: ./docker/backend
-          file: ./docker/backend/Dockerfile
+          context: ./Docker/backend
+          file: ./Docker/backend/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -96,8 +96,8 @@ jobs:
       - name: Build and push Frontend image
         uses: docker/build-push-action@v5
         with:
-          context: ./docker/frontend
-          file: ./docker/frontend/Dockerfile
+          context: ./Docker/frontend
+          file: ./Docker/frontend/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

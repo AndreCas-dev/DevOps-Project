@@ -36,36 +36,26 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        working-directory: ./docker/backend
+        working-directory: ./Docker/backend
         run: npm install
 
       - name: Build TypeScript
-        working-directory: ./docker/backend
+        working-directory: ./Docker/backend
         run: npm run build
 
       - name: Run linter
-        working-directory: ./docker/backend
-        run: |
-          if npm run lint --if-present 2>/dev/null; then
-            echo "Lint completed"
-          else
-            echo "No lint script, skipping"
-          fi
+        working-directory: ./Docker/backend
+        run: npm run lint --if-present || true
 
       - name: Run tests
-        working-directory: ./docker/backend
+        working-directory: ./Docker/backend
         env:
           POSTGRES_HOST: localhost
           POSTGRES_PORT: 5432
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: test_db
-        run: |
-          if npm test --if-present 2>/dev/null; then
-            echo "Tests completed"
-          else
-            echo "No test script, skipping"
-          fi
+        run: npm test --if-present || true
 
   test-frontend:
     name: Frontend Tests
@@ -81,19 +71,19 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        working-directory: ./docker/frontend
+        working-directory: ./Docker/frontend
         run: npm install
 
       - name: Build
-        working-directory: ./docker/frontend
+        working-directory: ./Docker/frontend
         run: npm run build --if-present || true
 
       - name: Run linter
-        working-directory: ./docker/frontend
+        working-directory: ./Docker/frontend
         run: npm run lint --if-present || true
 
       - name: Run tests
-        working-directory: ./docker/frontend
+        working-directory: ./Docker/frontend
         run: npm test --if-present || true
 
   test-success:
