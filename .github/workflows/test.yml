@@ -34,12 +34,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: ./docker/backend/package-lock.json
 
       - name: Install dependencies
         working-directory: ./docker/backend
-        run: npm ci
+        run: npm install
 
       - name: Run linter
         working-directory: ./docker/backend
@@ -68,12 +66,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: ./docker/frontend/package-lock.json
 
       - name: Install dependencies
         working-directory: ./docker/frontend
-        run: npm ci
+        run: npm install
 
       - name: Run linter
         working-directory: ./docker/frontend
@@ -99,13 +95,13 @@ jobs:
       - name: Lint Backend
         working-directory: ./docker/backend
         run: |
-          npm ci
+          npm install
           npm run lint || true
 
       - name: Lint Frontend
         working-directory: ./docker/frontend
         run: |
-          npm ci
+          npm install
           npm run lint || true
 
   test-success:

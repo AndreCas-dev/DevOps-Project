@@ -121,13 +121,13 @@ jobs:
       - name: Check backend npm dependencies
         working-directory: ./docker/backend
         run: |
-          npm ci
+          npm install
           npm audit --audit-level=high || true
 
       - name: Check frontend npm dependencies
         working-directory: ./docker/frontend
         run: |
-          npm ci
+          npm install
           npm audit --audit-level=high || true
 
   codeql:
