@@ -35,7 +35,7 @@ prometheus_gid: "65534"
 grafana_uid: "472"
 grafana_gid: "472"
 
-# Health check endpoints
-prometheus_health_url: "http://localhost:9090/prometheus/-/healthy"
-grafana_health_url: "http://localhost:3000/grafana/api/health"
-alertmanager_health_url: "http://localhost:9093/alertmanager/-/healthy"
+# Health check endpoints (via nginx proxy)
+prometheus_health_url: "http://localhost/prometheus/-/healthy"
+grafana_health_url: "http://localhost/grafana/api/health"
+alertmanager_health_url: "http://localhost/alertmanager/-/healthy"
