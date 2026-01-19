@@ -99,7 +99,6 @@ devops-project/
 |        └── fluentbit-config.river   
 │
 ├── ci-cd/                             # Pipeline CI/CD
-│   ├── .gitlab-ci.yml                 # (o .github/workflows/ per GitHub)
 │   ├── .github/
 │   │   └── workflows/
 │   │       ├── build.yml

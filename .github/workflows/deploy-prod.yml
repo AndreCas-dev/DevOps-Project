@@ -1,0 +1,169 @@
+name: Deploy to Production
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag to deploy (e.g., v1.0.0)'
+        required: true
+        type: string
+      skip_approval:
+        description: 'Skip manual approval (not recommended)'
+        required: false
+        default: 'false'
+        type: boolean
+
+env:
+  ENVIRONMENT: production
+  ANSIBLE_HOST_KEY_CHECKING: 'false'
+
+jobs:
+  validate:
+    name: Validate Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "release" ]; then
+            echo "version=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Validate version format
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid version format: $VERSION"
+            echo "Expected format: vX.Y.Z"
+            exit 1
+          fi
+          echo "Version $VERSION is valid"
+
+  security-scan:
+    name: Security Scan
+    needs: [validate]
+    uses: ./.github/workflows/security.yml
+
+  approval:
+    name: Manual Approval
+    needs: [validate, security-scan]
+    if: ${{ github.event.inputs.skip_approval != 'true' }}
+    runs-on: ubuntu-latest
+    environment: production-approval
+
+    steps:
+      - name: Approval checkpoint
+        run: |
+          echo "Deployment to production approved"
+          echo "Version: ${{ needs.validate.outputs.version }}"
+
+  deploy:
+    name: Deploy to Production
+    needs: [validate, security-scan, approval]
+    if: always() && needs.security-scan.result == 'success' && (needs.approval.result == 'success' || needs.approval.result == 'skipped')
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.validate.outputs.version }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Ansible and SOPS
+        run: |
+          pip install ansible ansible-core
+          ansible-galaxy collection install community.docker community.general
+
+          # Install SOPS
+          curl -LO https://github.com/getsops/sops/releases/download/v3.8.1/sops-v3.8.1.linux.amd64
+          chmod +x sops-v3.8.1.linux.amd64
+          sudo mv sops-v3.8.1.linux.amd64 /usr/local/bin/sops
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PROD_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.PROD_SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Configure SOPS Age key
+        run: |
+          mkdir -p ~/.config/sops/age
+          echo "${{ secrets.SOPS_AGE_KEY }}" > ~/.config/sops/age/keys.txt
+          chmod 600 ~/.config/sops/age/keys.txt
+
+      - name: Create inventory file
+        run: |
+          cat > inventory.ini << EOF
+          [webservers]
+          prod-server ansible_host=${{ secrets.PROD_SERVER_HOST }} ansible_user=${{ secrets.PROD_SSH_USER }}
+          EOF
+
+      - name: Create backup before deploy
+        run: |
+          ssh -i ~/.ssh/id_rsa ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SERVER_HOST }} \
+            "cd /opt/devops-app && docker compose exec -T db pg_dump -U postgres postgres > /var/backups/pre-deploy-$(date +%Y%m%d%H%M%S).sql" || true
+
+      - name: Deploy with Ansible
+        working-directory: ./infrastructure/ansible
+        env:
+          ANSIBLE_CONFIG: ./ansible.cfg
+          SOPS_AGE_KEY_FILE: ~/.config/sops/age/keys.txt
+        run: |
+          ansible-playbook \
+            -i ../../inventory.ini \
+            playbooks/deploy-app.yml \
+            -e "environment=production" \
+            -e "pull_images=true" \
+            -e "build_images=false" \
+            -e "app_version=${{ needs.validate.outputs.version }}" \
+            -v
+
+      - name: Health check
+        run: |
+          sleep 30
+          for i in {1..5}; do
+            if curl -sf http://${{ secrets.PROD_SERVER_HOST }}/health; then
+              echo "Health check passed!"
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
+          echo "Health check failed after 5 attempts"
+          exit 1
+
+      - name: Verify deployment
+        run: |
+          # Check all critical services
+          curl -sf http://${{ secrets.PROD_SERVER_HOST }}/prometheus/-/healthy || echo "Prometheus warning"
+          curl -sf http://${{ secrets.PROD_SERVER_HOST }}/grafana/api/health || echo "Grafana warning"
+          echo "Deployment verification completed"
+
+      - name: Notify on success
+        if: success()
+        run: |
+          echo "Production deployment successful!"
+          echo "Version: ${{ needs.validate.outputs.version }}"
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "Deployment failed! Manual rollback may be required."
+          echo "Check the server logs and consider restoring from backup."
