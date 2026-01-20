@@ -138,7 +138,7 @@ jobs:
       - name: Start application stack
         run: |
           cd docker
-          docker compose up -d --build
+          docker compose -f docker-compose.ci.yml up -d --build
           sleep 30
 
       - name: Wait for services to be ready
@@ -167,11 +167,17 @@ jobs:
           path: tests/e2e/playwright-report/
           retention-days: 7
 
+      - name: Show container logs on failure
+        if: failure()
+        run: |
+          cd docker
+          docker compose -f docker-compose.ci.yml logs
+
       - name: Stop application stack
         if: always()
         run: |
           cd docker
-          docker compose down -v
+          docker compose -f docker-compose.ci.yml down -v
 
   test-success:
     name: Tests Success
