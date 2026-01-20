@@ -2,7 +2,7 @@ name: Deploy to Development
 
 on:
   push:
-    branches: [develop]
+    branches: [dev]
   workflow_dispatch:
     inputs:
       skip_tests:

@@ -2,12 +2,12 @@ name: Build
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, dev]
     paths:
       - 'docker/**'
       - '.github/workflows/build.yml'
   pull_request:
-    branches: [main, develop]
+    branches: [main, dev]
     paths:
       - 'docker/**'
 
