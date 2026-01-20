@@ -1,0 +1,116 @@
+---
+# Backup role tasks
+
+- name: Include variables
+  ansible.builtin.include_vars: main.yml
+
+- name: Create backup directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  loop:
+    - "{{ backup_base_dir }}"
+    - "{{ backup_base_dir }}/monthly"
+    - "{{ backup_scripts_dir }}"
+    - "{{ backup_scripts_dir }}/schedules"
+  become: true
+
+- name: Copy backup script
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../../backup/backup.sh"
+    dest: "{{ backup_scripts_dir }}/backup.sh"
+    mode: '0755'
+    owner: root
+    group: root
+  become: true
+
+- name: Copy restore script
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../../../backup/restore.sh"
+    dest: "{{ backup_scripts_dir }}/restore.sh"
+    mode: '0755'
+    owner: root
+    group: root
+  become: true
+
+- name: Create backup environment file
+  ansible.builtin.template:
+    src: backup-env.j2
+    dest: "{{ backup_scripts_dir }}/.env"
+    mode: '0600'
+    owner: root
+    group: root
+  become: true
+
+- name: Setup daily backup cron job
+  ansible.builtin.cron:
+    name: "DevOps daily backup"
+    minute: "{{ backup_schedule_minute }}"
+    hour: "{{ backup_schedule_hour }}"
+    day: "{{ backup_schedule_day }}"
+    month: "{{ backup_schedule_month }}"
+    weekday: "{{ backup_schedule_weekday }}"
+    job: "{{ backup_scripts_dir }}/backup.sh -t all >> {{ backup_log_file }} 2>&1"
+    user: root
+  become: true
+
+- name: Setup monthly backup cron job
+  ansible.builtin.cron:
+    name: "DevOps monthly backup"
+    minute: "0"
+    hour: "4"
+    day: "1"
+    month: "*"
+    weekday: "*"
+    job: "{{ backup_scripts_dir }}/backup.sh -t all -d {{ backup_base_dir }}/monthly >> {{ backup_log_file }} 2>&1"
+    user: root
+  become: true
+
+- name: Setup log cleanup cron job
+  ansible.builtin.cron:
+    name: "DevOps backup log cleanup"
+    minute: "0"
+    hour: "3"
+    day: "*"
+    month: "*"
+    weekday: "0"
+    job: "find /var/log -name 'backup*.log' -mtime +{{ backup_log_retention_days }} -delete"
+    user: root
+  become: true
+
+- name: Create logrotate configuration for backup logs
+  ansible.builtin.copy:
+    dest: /etc/logrotate.d/devops-backup
+    content: |
+      {{ backup_log_file }} {
+          weekly
+          rotate 4
+          compress
+          delaycompress
+          missingok
+          notifempty
+          create 0640 root root
+      }
+    mode: '0644'
+    owner: root
+    group: root
+  become: true
+
+- name: Verify backup script is executable
+  ansible.builtin.command:
+    cmd: "{{ backup_scripts_dir }}/backup.sh --help"
+  register: backup_verify
+  changed_when: false
+  failed_when: backup_verify.rc != 0
+
+- name: Display backup configuration
+  ansible.builtin.debug:
+    msg: |
+      Backup configuration:
+      - Backup directory: {{ backup_base_dir }}
+      - Retention: {{ backup_retention_days }} days
+      - Schedule: {{ backup_schedule_minute }} {{ backup_schedule_hour }} * * * (daily at {{ backup_schedule_hour }}:{{ backup_schedule_minute }})
+      - Log file: {{ backup_log_file }}

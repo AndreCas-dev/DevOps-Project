@@ -1,0 +1,26 @@
+# DevOps Project - Backup Schedules
+# Install with: crontab backup/schedules/crontab.txt
+# Or add entries manually with: crontab -e
+
+# Environment variables
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+MAILTO=admin@example.com
+
+# Backup configuration
+BACKUP_DIR=/var/backups/devops
+RETENTION_DAYS=7
+COMPOSE_DIR=/opt/devops-app/docker
+VOLUMES_DIR=/opt/devops-app/volumes
+
+# Daily full backup at 2:00 AM
+0 2 * * * /opt/devops-app/backup/backup.sh -t all >> /var/log/backup.log 2>&1
+
+# Hourly database backup (optional - uncomment if needed)
+# 0 * * * * /opt/devops-app/backup/backup.sh -t database >> /var/log/backup-db.log 2>&1
+
+# Weekly cleanup of old logs (Sunday at 3:00 AM)
+0 3 * * 0 find /var/log -name "backup*.log" -mtime +30 -delete
+
+# Monthly verification backup (1st of month at 4:00 AM)
+0 4 1 * * /opt/devops-app/backup/backup.sh -t all -d /var/backups/devops/monthly >> /var/log/backup-monthly.log 2>&1

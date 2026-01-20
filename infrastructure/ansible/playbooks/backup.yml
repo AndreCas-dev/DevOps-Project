@@ -1,0 +1,74 @@
+---
+# Playbook for setting up and managing backups
+# Usage:
+#   ansible-playbook -i inventory/production.ini playbooks/backup.yml
+#   ansible-playbook -i inventory/production.ini playbooks/backup.yml --tags setup
+#   ansible-playbook -i inventory/production.ini playbooks/backup.yml --tags backup-now
+#   ansible-playbook -i inventory/production.ini playbooks/backup.yml --tags restore -e "backup_name=backup_20240115_020000"
+
+- name: Setup and manage backups
+  hosts: all
+  become: true
+  gather_facts: true
+
+  vars:
+    # Override these in group_vars or via command line
+    backup_type: "all"  # all, database, volumes
+
+  tasks:
+    - name: Include backup role for setup
+      ansible.builtin.include_role:
+        name: backup
+      tags:
+        - setup
+        - always
+
+    - name: Run backup now
+      tags:
+        - backup-now
+        - never
+      block:
+        - name: Execute backup script
+          ansible.builtin.command:
+            cmd: "{{ backup_scripts_dir }}/backup.sh -t {{ backup_type }}"
+          register: backup_result
+          changed_when: true
+
+        - name: Display backup result
+          ansible.builtin.debug:
+            var: backup_result.stdout_lines
+
+    - name: Restore from backup
+      tags:
+        - restore
+        - never
+      block:
+        - name: Validate backup_name is provided
+          ansible.builtin.fail:
+            msg: "backup_name variable is required for restore. Use -e 'backup_name=backup_YYYYMMDD_HHMMSS'"
+          when: backup_name is not defined
+
+        - name: Execute restore script
+          ansible.builtin.command:
+            cmd: "{{ backup_scripts_dir }}/restore.sh -b {{ backup_name }} -t {{ backup_type }} -f"
+          register: restore_result
+          changed_when: true
+
+        - name: Display restore result
+          ansible.builtin.debug:
+            var: restore_result.stdout_lines
+
+    - name: List available backups
+      tags:
+        - list
+        - never
+      block:
+        - name: Execute restore script with list option
+          ansible.builtin.command:
+            cmd: "{{ backup_scripts_dir }}/restore.sh -l"
+          register: list_result
+          changed_when: false
+
+        - name: Display available backups
+          ansible.builtin.debug:
+            var: list_result.stdout_lines

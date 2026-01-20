@@ -1,0 +1,15 @@
+---
+# Backup role handlers
+
+- name: Reload cron
+  ansible.builtin.systemd:
+    name: cron
+    state: reloaded
+  become: true
+
+- name: Run initial backup
+  ansible.builtin.command:
+    cmd: "{{ backup_scripts_dir }}/backup.sh -t all"
+  become: true
+  async: 3600
+  poll: 0

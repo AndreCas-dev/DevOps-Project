@@ -1,0 +1,20 @@
+# Backup environment configuration
+# Managed by Ansible - do not edit manually
+
+# Directories
+BACKUP_DIR={{ backup_base_dir }}
+COMPOSE_DIR={{ backup_compose_dir }}
+VOLUMES_DIR={{ backup_volumes_dir }}
+
+# Retention
+RETENTION_DAYS={{ backup_retention_days }}
+
+# Database
+POSTGRES_CONTAINER={{ backup_postgres_container }}
+POSTGRES_USER={{ backup_postgres_user }}
+POSTGRES_DB={{ backup_postgres_db }}
+
+# Notification (optional)
+{% if backup_notification_enabled %}
+NOTIFICATION_EMAIL={{ backup_notification_email }}
+{% endif %}
