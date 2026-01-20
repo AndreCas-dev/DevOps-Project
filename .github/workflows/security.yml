@@ -108,9 +108,58 @@ jobs:
           npm install
           npm audit --audit-level=high || true
 
+  sonarqube:
+    name: Code Quality (SonarQube)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install backend dependencies
+        working-directory: ./docker/backend
+        run: npm ci
+
+      - name: Run backend tests with coverage
+        working-directory: ./docker/backend
+        run: npm run test:coverage || true
+        continue-on-error: true
+
+      - name: Install frontend dependencies
+        working-directory: ./docker/frontend
+        run: npm ci
+
+      - name: Run frontend tests with coverage
+        working-directory: ./docker/frontend
+        run: npm run test:coverage || true
+        continue-on-error: true
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@master
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        with:
+          projectBaseDir: .
+          args: >
+            -Dsonar.projectKey=devops-project
+            -Dsonar.sources=docker/backend/src,docker/frontend/src
+            -Dsonar.tests=docker/backend/tests,docker/frontend/tests
+            -Dsonar.javascript.lcov.reportPaths=docker/frontend/coverage/lcov.info
+            -Dsonar.typescript.lcov.reportPaths=docker/backend/coverage/lcov.info
+        continue-on-error: true
+
   security-success:
     name: Security Checks Success
-    needs: [gitleaks, trivy-repo, dependency-check]
+    needs: [gitleaks, trivy-repo, dependency-check, sonarqube]
     runs-on: ubuntu-latest
     if: always()
 

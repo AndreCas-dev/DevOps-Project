@@ -1,0 +1,44 @@
+# Gitleaks Configuration
+# https://github.com/gitleaks/gitleaks
+
+title = "DevOps Project Gitleaks Config"
+
+# Use default rules
+[extend]
+useDefault = true
+
+# Custom rules
+[[rules]]
+id = "custom-api-key"
+description = "Custom API Key Pattern"
+regex = '''(?i)(api[_-]?key|apikey)\s*[:=]\s*['"]?([a-zA-Z0-9]{32,})['"]?'''
+tags = ["key", "api"]
+
+[[rules]]
+id = "custom-password"
+description = "Hardcoded Password"
+regex = '''(?i)(password|passwd|pwd)\s*[:=]\s*['"]([^'"]{8,})['"]'''
+tags = ["password"]
+
+# Allowlist - paths/files to ignore
+[allowlist]
+description = "Allowlisted files and paths"
+paths = [
+    '''\.env\.example$''',
+    '''\.env\.template$''',
+    '''secrets/sops/secrets/.*\.enc\.yaml$''',
+    '''tests/.*''',
+    '''docs/.*''',
+    '''node_modules/.*''',
+    '''\.git/.*'''
+]
+
+# Specific commits to ignore (add as needed)
+# commits = ["commit-sha-here"]
+
+# Regex patterns to ignore
+regexes = [
+    '''POSTGRES_PASSWORD=postgres''',
+    '''GF_ADMIN_PASSWORD=admin''',
+    '''EXAMPLE_.*'''
+]
