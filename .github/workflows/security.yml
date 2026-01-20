@@ -111,7 +111,8 @@ jobs:
   sonarqube:
     name: Code Quality (SonarQube)
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || github.ref == 'refs/heads/main'
+    # Only run if SONAR_TOKEN is configured
+    if: (github.event_name == 'pull_request' || github.ref == 'refs/heads/main') && vars.SONAR_ENABLED == 'true'
 
     steps:
       - name: Checkout repository
@@ -159,7 +160,7 @@ jobs:
 
   security-success:
     name: Security Checks Success
-    needs: [gitleaks, trivy-repo, dependency-check, sonarqube]
+    needs: [gitleaks, trivy-repo, dependency-check]
     runs-on: ubuntu-latest
     if: always()
 
