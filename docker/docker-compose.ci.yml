@@ -51,6 +51,116 @@ services:
     depends_on:
       - app
       - frontend
+      - prometheus
+      - alertmanager
+      - grafana
+      - loki
+      - fluent-bit
+      - node-exporter
+      - pgadmin
+    networks:
+      - devops-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ../monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.external-url=/prometheus'
+      - '--web.enable-lifecycle'
+    networks:
+      - devops-network
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    volumes:
+      - ../monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+      - '--web.external-url=http://localhost/alertmanager'
+    networks:
+      - devops-network
+
+  grafana:
+    image: grafana/grafana-enterprise
+    container_name: grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GF_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_ADMIN_PASSWORD:-admin}
+    volumes:
+      - ../monitoring/grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+      - ../monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks:
+      - devops-network
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: node-exporter
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - devops-network
+
+  nginx-exporter:
+    image: nginx/nginx-prometheus-exporter:latest
+    container_name: nginx-exporter
+    command:
+      - '--nginx.scrape-uri=http://nginx:80/stub_status'
+    depends_on:
+      - nginx
+    networks:
+      - devops-network
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: postgres-exporter
+    environment:
+      - DATA_SOURCE_NAME=postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-Test}?sslmode=disable
+    depends_on:
+      - db
+    networks:
+      - devops-network
+
+  loki:
+    image: grafana/loki:latest
+    container_name: loki
+    volumes:
+      - ../logging/loki/loki-config.yml:/etc/loki/loki-config.yaml:ro
+    command:
+      - '-config.file=/etc/loki/loki-config.yaml'
+    networks:
+      - devops-network
+
+  fluent-bit:
+    image: fluent/fluent-bit
+    container_name: fluent-bit
+    volumes:
+      - ../logging/fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+    depends_on:
+      - loki
+    networks:
+      - devops-network
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@admin.com}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-admin}
+      - SCRIPT_NAME=/pgadmin
+    depends_on:
+      - db
     networks:
       - devops-network
 
