@@ -105,8 +105,7 @@ devops-project/
 |   |
 |   ├── security/
 |   |   ├── trivy-scan.yml             # Scansione vulnerabilità container
-|   |   ├── gitleaks.yml               # Scansione secrets nel codice
-|   |   └── sonarqube.yml              # Analisi qualità codice
+|   |   └── gitleaks.yml               # Scansione secrets nel codice
 │   │
 │   │
 │   └── scripts/                       # Script di supporto
@@ -158,9 +157,12 @@ devops-project/
 │   ├── unit/
 │   ├── integration/
 │   └── e2e/
+|         └── playwright 
 │
 └── volumes/                           # Dati persistenti (NON committare!)
     ├── prometheus-data/
     ├── grafana-data/
-    ├── postgres-data/
+    ├── pgadmin-data/
+    ├── loki-data/
+    ├── alertmanager-data/
     └── logs/
