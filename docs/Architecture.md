@@ -69,10 +69,7 @@ devops-project/
 ├── monitoring/                        # Stack di monitoring
 │   ├── prometheus/
 │   │   ├── prometheus.yml
-│   │   ├── alerts.yml
-│   │   └── rules/
-│   │       ├── app-rules.yml
-│   │       └── system-rules.yml
+│   │   └── alerts.yml
 │   │
 │   ├── grafana/
 │   │   ├── provisioning/
