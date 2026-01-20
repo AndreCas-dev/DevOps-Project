@@ -59,7 +59,6 @@ jobs:
     needs: [validate, security-scan]
     if: ${{ github.event.inputs.skip_approval != 'true' }}
     runs-on: ubuntu-latest
-    environment: production-approval
 
     steps:
       - name: Approval checkpoint
@@ -72,7 +71,6 @@ jobs:
     needs: [validate, security-scan, approval]
     if: always() && needs.security-scan.result == 'success' && (needs.approval.result == 'success' || needs.approval.result == 'skipped')
     runs-on: ubuntu-latest
-    environment: production
 
     steps:
       - name: Checkout repository

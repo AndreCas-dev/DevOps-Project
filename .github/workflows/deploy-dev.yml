@@ -32,7 +32,6 @@ jobs:
     needs: [build]
     if: always() && needs.build.result == 'success'
     runs-on: ubuntu-latest
-    environment: development
 
     steps:
       - name: Checkout repository
