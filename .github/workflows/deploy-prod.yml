@@ -12,7 +12,7 @@ on:
       skip_approval:
         description: 'Skip manual approval (not recommended)'
         required: false
-        default: 'false'
+        default: false
         type: boolean
 
 env:
