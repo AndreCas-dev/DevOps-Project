@@ -1,6 +1,7 @@
 ---
 # Playbook for setting up and managing backups
 # Usage:
+#   cd infrastructure/ansible
 #   ansible-playbook -i inventory/production.ini playbooks/backup.yml
 #   ansible-playbook -i inventory/production.ini playbooks/backup.yml --tags setup
 #   ansible-playbook -i inventory/production.ini playbooks/backup.yml --tags backup-now
@@ -11,18 +12,16 @@
   become: true
   gather_facts: true
 
-  vars:
-    # Override these in group_vars or via command line
-    backup_type: "all"  # all, database, volumes
+  vars_files:
+    - ../group_vars/all.yml
 
-  tasks:
-    - name: Include backup role for setup
-      ansible.builtin.include_role:
-        name: backup
+  roles:
+    - role: ../roles/backup
       tags:
         - setup
         - always
 
+  tasks:
     - name: Run backup now
       tags:
         - backup-now

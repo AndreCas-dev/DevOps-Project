@@ -4,6 +4,12 @@
 - name: Include variables
   ansible.builtin.include_vars: main.yml
 
+- name: Debug backup paths
+  ansible.builtin.debug:
+    msg: |
+      backup_scripts_dir: {{ backup_scripts_dir }}
+      backup_base_dir: {{ backup_base_dir }}
+
 - name: Create backup directories
   ansible.builtin.file:
     path: "{{ item }}"
@@ -20,20 +26,22 @@
 
 - name: Copy backup script
   ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../../../backup/backup.sh"
+    src: backup.sh
     dest: "{{ backup_scripts_dir }}/backup.sh"
     mode: '0755'
     owner: root
     group: root
+    force: true
   become: true
 
 - name: Copy restore script
   ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../../../backup/restore.sh"
+    src: restore.sh
     dest: "{{ backup_scripts_dir }}/restore.sh"
     mode: '0755'
     owner: root
     group: root
+    force: true
   become: true
 
 - name: Create backup environment file
@@ -98,6 +106,13 @@
     owner: root
     group: root
   become: true
+
+- name: Fix line endings (CRLF to LF)
+  ansible.builtin.shell: |
+    sed -i 's/\r$//' {{ backup_scripts_dir }}/backup.sh
+    sed -i 's/\r$//' {{ backup_scripts_dir }}/restore.sh
+  become: true
+  changed_when: false
 
 - name: Verify backup script is executable
   ansible.builtin.command:
