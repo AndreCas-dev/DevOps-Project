@@ -31,43 +31,22 @@ jobs:
     name: Deploy to Dev Server
     needs: [build]
     if: always() && needs.build.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
       - name: Install Ansible
         run: |
           pip install ansible ansible-core
           ansible-galaxy collection install community.docker community.general
-      
-      - name: Debug host connection
-        run: |
-          echo "Testing TCP port 22..."
-          nc -zv -w5 ${{ secrets.DEV_SERVER_HOST }} 22 || echo "Port 22 closed"
-          echo "Testing TCP port 2222..."
-          nc -zv -w5 ${{ secrets.DEV_SERVER_HOST }} 2222 || echo "Port 2222 closed"
-          echo "Testing TCP port 80..."
-          nc -zv -w5 ${{ secrets.DEV_SERVER_HOST }} 80 || echo "Port 80 closed"
-
-      - name: Configure SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.DEV_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -p 2222 -H ${{ secrets.DEV_SERVER_HOST }} >> ~/.ssh/known_hosts
 
       - name: Create inventory file
         run: |
           cat > inventory.ini << EOF
           [webservers]
-          dev-server ansible_host=${{ secrets.DEV_SERVER_HOST }} ansible_user=${{ secrets.DEV_SSH_USER }}
+          dev-server ansible_host=${{ secrets.DEV_SERVER_HOST }} ansible_user=${{ secrets.DEV_SSH_USER }} ansible_connection=local
           EOF
 
       - name: Deploy with Ansible
@@ -86,7 +65,7 @@ jobs:
       - name: Health check
         run: |
           sleep 30
-          curl -f http://${{ secrets.DEV_SERVER_HOST }}/health || exit 1
+          curl -f http://localhost/health || exit 1
           echo "Health check passed!"
 
       - name: Notify on success
