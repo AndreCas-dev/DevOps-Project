@@ -63,6 +63,11 @@ jobs:
             -e "deploy_env=development" \
             -e "pull_images=true" \
             -e "build_images=false" \
+            -e '{"database": {"postgres_host": "db", "postgres_port": 5432, "postgres_user": "postgres", "postgres_password": "${{ secrets.POSTGRES_PASSWORD }}", "postgres_db": "devops_dev"}}' \
+            -e '{"app": {"debug": "true"}}' \
+            -e '{"nginx": {"port": 80}}' \
+            -e '{"monitoring": {"grafana_admin_user": "admin", "grafana_admin_password": "${{ secrets.GRAFANA_PASSWORD }}"}}' \
+            -e '{"pgadmin": {"email": "admin@dev.local", "password": "${{ secrets.PGADMIN_PASSWORD }}"}}' \
             -v
 
       - name: Health check
