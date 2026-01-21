@@ -37,10 +37,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Ansible
-        run: |
-          pip install ansible ansible-core
-          ansible-galaxy collection install community.docker community.general
+      # - name: Install Ansible
+      #   run: |
+      #     pip install ansible ansible-core
+      #     ansible-galaxy collection install community.docker community.general
 
       - name: Create inventory file
         run: |
