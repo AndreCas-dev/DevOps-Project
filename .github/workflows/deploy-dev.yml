@@ -47,13 +47,14 @@ jobs:
           pip install ansible ansible-core
           ansible-galaxy collection install community.docker community.general
       
-      - name: Debug host
+      - name: Debug host connection
         run: |
-          echo "Host length: ${#HOST}"
-          ping -c 1 ${{ secrets.DEV_SERVER_HOST }} || echo "Ping failed"
-          nslookup ${{ secrets.DEV_SERVER_HOST }} || echo "Lookup failed"
-        env:
-          HOST: ${{ secrets.DEV_SERVER_HOST }}
+          echo "Testing TCP port 22..."
+          nc -zv -w5 ${{ secrets.DEV_SERVER_HOST }} 22 || echo "Port 22 closed"
+          echo "Testing TCP port 2222..."
+          nc -zv -w5 ${{ secrets.DEV_SERVER_HOST }} 2222 || echo "Port 2222 closed"
+          echo "Testing TCP port 80..."
+          nc -zv -w5 ${{ secrets.DEV_SERVER_HOST }} 80 || echo "Port 80 closed"
 
       - name: Configure SSH
         run: |
