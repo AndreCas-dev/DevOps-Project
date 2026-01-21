@@ -46,6 +46,14 @@ jobs:
         run: |
           pip install ansible ansible-core
           ansible-galaxy collection install community.docker community.general
+      
+      - name: Debug host
+        run: |
+          echo "Host length: ${#HOST}"
+          ping -c 1 ${{ secrets.DEV_SERVER_HOST }} || echo "Ping failed"
+          nslookup ${{ secrets.DEV_SERVER_HOST }} || echo "Lookup failed"
+        env:
+          HOST: ${{ secrets.DEV_SERVER_HOST }}
 
       - name: Configure SSH
         run: |
