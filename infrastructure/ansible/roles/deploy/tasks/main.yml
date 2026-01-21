@@ -100,6 +100,15 @@
 # =============================================================================
 # Deploy environment file
 # =============================================================================
+- name: Debug - Show template variables
+  ansible.builtin.debug:
+    msg: |
+      database: {{ database | default('NOT DEFINED') }}
+      app: {{ app | default('NOT DEFINED') }}
+      nginx: {{ nginx | default('NOT DEFINED') }}
+      monitoring: {{ monitoring | default('NOT DEFINED') }}
+      pgadmin: {{ pgadmin | default('NOT DEFINED') }}
+
 - name: Deploy environment file
   ansible.builtin.template:
     src: env.j2
@@ -108,7 +117,7 @@
     group: "{{ app_group }}"
     mode: '0600'
   become: true
-  no_log: true
+  # no_log: true  # Temporarily disabled for debugging
 
 # =============================================================================
 # Deploy with Docker Compose
