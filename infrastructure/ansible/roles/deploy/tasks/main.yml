@@ -29,7 +29,7 @@
 - name: Copy docker directory
   ansible.builtin.copy:
     src: "{{ project_root }}/docker/"
-    dest: "{{ app_docker_dir }}/"
+    dest: /opt/devops-app/docker/
     owner: "{{ app_user }}"
     group: "{{ app_group }}"
     mode: preserve
@@ -39,7 +39,7 @@
 - name: Copy monitoring directory
   ansible.builtin.copy:
     src: "{{ project_root }}/monitoring/"
-    dest: "{{ app_monitoring_dir }}/"
+    dest: /opt/devops-app/monitoring/
     owner: "{{ app_user }}"
     group: "{{ app_group }}"
     mode: preserve
@@ -48,7 +48,7 @@
 - name: Copy logging directory
   ansible.builtin.copy:
     src: "{{ project_root }}/logging/"
-    dest: "{{ app_logging_dir }}/"
+    dest: /opt/devops-app/logging/
     owner: "{{ app_user }}"
     group: "{{ app_group }}"
     mode: preserve
