@@ -47,6 +47,9 @@ jobs:
           cat > inventory.ini << EOF
           [webservers]
           dev-server ansible_host=${{ secrets.DEV_SERVER_HOST }} ansible_user=${{ secrets.DEV_SSH_USER }} ansible_connection=local
+
+          [dev:children]
+          webservers
           EOF
 
       - name: Deploy with Ansible
@@ -57,7 +60,7 @@ jobs:
           ansible-playbook \
             -i ../../inventory.ini \
             playbooks/deploy-app.yml \
-            -e "environment=development" \
+            -e "deploy_env=development" \
             -e "pull_images=true" \
             -e "build_images=false" \
             -v

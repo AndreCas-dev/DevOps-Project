@@ -1,0 +1,40 @@
+---
+# Development environment variables
+
+# Environment identification
+deploy_env: "development"
+
+# Domain configuration
+domain_name: "dev-server"
+ssl_enabled: false
+
+# Nested structure required by env.j2 template
+database:
+  postgres_host: "db"
+  postgres_port: 5432
+  postgres_user: "{{ vault_postgres_user | default('postgres') }}"
+  postgres_password: "{{ vault_postgres_password | default('devpassword') }}"
+  postgres_db: "{{ vault_postgres_db | default('devops_dev') }}"
+
+app:
+  debug: "true"
+
+nginx:
+  port: 80
+
+monitoring:
+  grafana_admin_user: "{{ vault_grafana_admin_user | default('admin') }}"
+  grafana_admin_password: "{{ vault_grafana_admin_password | default('devpassword') }}"
+
+pgadmin:
+  email: "{{ vault_pgadmin_email | default('admin@dev.local') }}"
+  password: "{{ vault_pgadmin_password | default('devpassword') }}"
+
+# Security settings (relaxed for dev)
+firewall_enabled: false
+fail2ban_enabled: false
+
+# Docker compose files
+docker_compose_files:
+  - "docker-compose.yml"
+  - "docker-compose.dev.yml"
