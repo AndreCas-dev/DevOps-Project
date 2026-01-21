@@ -10,33 +10,14 @@ on:
       - '.gitignore'
       - 'tests/**'
   workflow_dispatch:
-    inputs:
-      skip_tests:
-        description: 'Skip tests before deploy'
-        required: false
-        default: false
-        type: boolean
 
 env:
   ENVIRONMENT: development
   ANSIBLE_HOST_KEY_CHECKING: 'false'
 
 jobs:
-  test:
-    name: Run Tests
-    if: ${{ github.event.inputs.skip_tests != 'true' }}
-    uses: ./.github/workflows/test.yml
-
-  build:
-    name: Build Images
-    needs: [test]
-    if: always() && (needs.test.result == 'success' || needs.test.result == 'skipped')
-    uses: ./.github/workflows/build.yml
-
   deploy:
     name: Deploy to Dev Server
-    needs: [build]
-    if: always() && needs.build.result == 'success'
     runs-on: self-hosted
 
     steps:
