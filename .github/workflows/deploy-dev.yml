@@ -3,6 +3,12 @@ name: Deploy to Development
 on:
   push:
     branches: [dev]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'LICENSE'
+      - '.gitignore'
+      - 'tests/**'
   workflow_dispatch:
     inputs:
       skip_tests:
