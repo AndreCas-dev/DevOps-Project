@@ -11,6 +11,10 @@ on:
       - 'tests/**'
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   ENVIRONMENT: development
   ANSIBLE_HOST_KEY_CHECKING: 'false'
