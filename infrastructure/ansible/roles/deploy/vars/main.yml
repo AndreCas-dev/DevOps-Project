@@ -1,8 +1,9 @@
 ---
 # Deploy role variables
 
-# Project root directory
-project_root: "/mnt/c/Users/andrea.castelletti/Documents/DevOps-Project"
+# Project root directory (relative to playbook location)
+# This works both locally and on CI runners
+project_root: "{{ playbook_dir }}/../../.."
 
 # Application directories
 app_base_dir: "/opt/devops-app"

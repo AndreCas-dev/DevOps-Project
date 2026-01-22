@@ -29,7 +29,7 @@
 - name: Copy docker directory
   ansible.builtin.copy:
     src: "{{ project_root }}/docker/"
-    dest: "{{ app_docker_dir }}/"
+    dest: /opt/devops-app/docker/
     owner: "{{ app_user }}"
     group: "{{ app_group }}"
     mode: preserve
@@ -39,7 +39,7 @@
 - name: Copy monitoring directory
   ansible.builtin.copy:
     src: "{{ project_root }}/monitoring/"
-    dest: "{{ app_monitoring_dir }}/"
+    dest: /opt/devops-app/monitoring/
     owner: "{{ app_user }}"
     group: "{{ app_group }}"
     mode: preserve
@@ -48,7 +48,7 @@
 - name: Copy logging directory
   ansible.builtin.copy:
     src: "{{ project_root }}/logging/"
-    dest: "{{ app_logging_dir }}/"
+    dest: /opt/devops-app/logging/
     owner: "{{ app_user }}"
     group: "{{ app_group }}"
     mode: preserve
@@ -100,6 +100,15 @@
 # =============================================================================
 # Deploy environment file
 # =============================================================================
+- name: Debug - Show template variables
+  ansible.builtin.debug:
+    msg: |
+      database: {{ database | default('NOT DEFINED') }}
+      app: {{ app | default('NOT DEFINED') }}
+      nginx: {{ nginx | default('NOT DEFINED') }}
+      monitoring: {{ monitoring | default('NOT DEFINED') }}
+      pgadmin: {{ pgadmin | default('NOT DEFINED') }}
+
 - name: Deploy environment file
   ansible.builtin.template:
     src: env.j2
@@ -108,11 +117,45 @@
     group: "{{ app_group }}"
     mode: '0600'
   become: true
-  no_log: true
+  # no_log: true  # Temporarily disabled for debugging
 
 # =============================================================================
 # Deploy with Docker Compose
 # =============================================================================
+- name: Stop and remove existing containers
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_docker_dir }}"
+    project_name: "{{ compose_project_name }}"
+    files:
+      - "{{ compose_file }}"
+      - "{{ compose_override_file }}"
+    state: absent
+    remove_orphans: true
+  become: true
+  ignore_errors: true
+
+- name: Force remove conflicting containers
+  community.docker.docker_container:
+    name: "{{ item }}"
+    state: absent
+    force_kill: true
+  loop:
+    - alertmanager
+    - prometheus
+    - grafana
+    - loki
+    - nginx
+    - app
+    - frontend
+    - db
+    - pgadmin
+    - node-exporter
+    - nginx-exporter
+    - postgres-exporter
+    - fluent-bit
+  become: true
+  ignore_errors: true
+
 - name: Pull Docker images
   community.docker.docker_compose_v2:
     project_src: "{{ app_docker_dir }}"

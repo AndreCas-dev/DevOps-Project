@@ -1,0 +1,41 @@
+---
+# Backup role variables
+
+# Backup directories
+backup_base_dir: "/var/backups/devops"
+backup_scripts_dir: "/opt/devops-app/backup"
+
+# Retention settings
+backup_retention_days: 7
+backup_monthly_retention_days: 90
+
+# Schedule (cron format)
+backup_schedule_minute: "0"
+backup_schedule_hour: "2"
+backup_schedule_day: "*"
+backup_schedule_month: "*"
+backup_schedule_weekday: "*"
+
+# Database settings
+backup_postgres_container: "db"
+backup_postgres_user: "{{ postgres_user | default('postgres') }}"
+backup_postgres_db: "{{ postgres_db | default('Test') }}"
+
+# Paths
+backup_compose_dir: "{{ docker_compose_dir | default('/opt/devops-app') }}/docker"
+backup_volumes_dir: "{{ docker_compose_dir | default('/opt/devops-app') }}/volumes"
+
+# Notification settings (optional)
+backup_notification_enabled: false
+backup_notification_email: "admin@example.com"
+
+# Volumes to backup
+backup_volumes:
+  - prometheus-data
+  - grafana-data
+  - alertmanager-data
+  - loki-data
+
+# Logging
+backup_log_file: "/var/log/backup.log"
+backup_log_retention_days: 30

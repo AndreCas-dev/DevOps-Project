@@ -55,5 +55,5 @@ grafana_port: 3000
 grafana_provisioning_dir: "/etc/grafana/provisioning"
 
 # Prometheus settings
-prometheus_retention: "15d"
+prometheus_retention: "7d"
 prometheus_scrape_interval: "15s"

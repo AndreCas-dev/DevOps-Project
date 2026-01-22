@@ -1,0 +1,44 @@
+# Trivy Configuration
+# https://aquasecurity.github.io/trivy/latest/docs/configuration/
+
+# Scan severity levels
+severity:
+  - CRITICAL
+  - HIGH
+
+# Vulnerability settings
+vulnerability:
+  # Ignore unfixed vulnerabilities
+  ignore-unfixed: true
+
+  # Vulnerability types to scan
+  type:
+    - os
+    - library
+
+# Secret scanning
+secret:
+  config: ""
+
+# Misconfiguration scanning
+misconfiguration:
+  # Check specific config files
+  include:
+    - docker
+    - kubernetes
+
+# Output format
+format: table
+
+# Exit code on vulnerabilities found
+exit-code: 1
+
+# Ignore specific CVEs (add as needed)
+# ignorefile: .trivyignore
+
+# Cache settings
+cache:
+  dir: /tmp/trivy-cache
+
+# Timeout
+timeout: 10m
