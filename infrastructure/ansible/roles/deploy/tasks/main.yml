@@ -144,12 +144,15 @@
     - prometheus
     - grafana
     - loki
-    - promtail
     - nginx
-    - backend
+    - app
     - frontend
-    - postgres
+    - db
     - pgadmin
+    - node-exporter
+    - nginx-exporter
+    - postgres-exporter
+    - fluent-bit
   become: true
   ignore_errors: true
 
