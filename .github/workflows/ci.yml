@@ -18,7 +18,7 @@ env:
 
 jobs:
   # ===========================================
-  # TESTS
+  # UNIT TESTS
   # ===========================================
   test-backend:
     name: Backend Tests
@@ -95,94 +95,6 @@ jobs:
         working-directory: ./docker/frontend
         run: npm test
 
-  test-e2e:
-    name: E2E Tests
-    runs-on: ubuntu-latest
-    needs: [test-backend, test-frontend]
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: './tests/e2e/package-lock.json'
-
-      - name: Install dependencies
-        working-directory: ./tests/e2e
-        run: npm ci
-
-      - name: Install Playwright browsers
-        working-directory: ./tests/e2e
-        run: npx playwright install --with-deps chromium
-
-      - name: Create .env file
-        run: |
-          mkdir -p secrets
-          cat > secrets/.env << EOF
-          POSTGRES_HOST=db
-          POSTGRES_PORT=5432
-          POSTGRES_USER=postgres
-          POSTGRES_PASSWORD=postgres
-          POSTGRES_DB=Test
-          PORT=8000
-          DEBUG=false
-          NGINX_PORT=80
-          GF_ADMIN_USER=admin
-          GF_ADMIN_PASSWORD=admin
-          GF_SECURITY_ADMIN_USER=admin
-          GF_SECURITY_ADMIN_PASSWORD=admin
-          PGADMIN_EMAIL=admin@admin.com
-          PGADMIN_PASSWORD=admin
-          EOF
-
-      - name: Start application stack
-        run: |
-          cd docker
-          docker compose -f docker-compose.ci.yml up -d --build
-          sleep 30
-
-      - name: Wait for services to be ready
-        run: |
-          for i in {1..30}; do
-            if curl -sf http://localhost/health; then
-              echo "Backend is ready"
-              break
-            fi
-            echo "Waiting for backend... ($i/30)"
-            sleep 5
-          done
-
-      - name: Run E2E tests
-        working-directory: ./tests/e2e
-        env:
-          APP_URL: http://localhost
-          API_URL: http://localhost/api
-        run: npx playwright test
-
-      - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
-        if: failure()
-        with:
-          name: playwright-report
-          path: tests/e2e/playwright-report/
-          retention-days: 7
-
-      - name: Show container logs on failure
-        if: failure()
-        run: |
-          cd docker
-          docker compose -f docker-compose.ci.yml logs
-
-      - name: Stop application stack
-        if: always()
-        run: |
-          cd docker
-          docker compose -f docker-compose.ci.yml down -v
-
   # ===========================================
   # SECURITY
   # ===========================================
@@ -221,12 +133,12 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
   # ===========================================
-  # BUILD
+  # BUILD, E2E TEST, AND PUSH
   # ===========================================
-  build-backend:
-    name: Build Backend
+  build-test-push:
+    name: Build, E2E Test & Push
     runs-on: ubuntu-latest
-    needs: [test-e2e, security-gitleaks]
+    needs: [test-backend, test-frontend, security-gitleaks, security-trivy]
     permissions:
       contents: read
       packages: write
@@ -245,8 +157,108 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata
-        id: meta
+      # Build images locally first
+      - name: Build Backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./docker/backend
+          file: ./docker/backend/Dockerfile
+          load: true
+          tags: backend:test
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Build Frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./docker/frontend
+          file: ./docker/frontend/Dockerfile
+          load: true
+          tags: frontend:test
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+
+      # Run E2E tests with built images
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './tests/e2e/package-lock.json'
+
+      - name: Install E2E dependencies
+        working-directory: ./tests/e2e
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: ./tests/e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Create .env file
+        run: |
+          mkdir -p secrets
+          cat > secrets/.env << EOF
+          POSTGRES_HOST=db
+          POSTGRES_PORT=5432
+          POSTGRES_USER=postgres
+          POSTGRES_PASSWORD=postgres
+          POSTGRES_DB=Test
+          PORT=8000
+          DEBUG=false
+          NGINX_PORT=80
+          GF_ADMIN_USER=admin
+          GF_ADMIN_PASSWORD=admin
+          GF_SECURITY_ADMIN_USER=admin
+          GF_SECURITY_ADMIN_PASSWORD=admin
+          PGADMIN_EMAIL=admin@admin.com
+          PGADMIN_PASSWORD=admin
+          EOF
+
+      - name: Start application stack
+        working-directory: ./docker
+        run: |
+          docker compose -f docker-compose.ci.yml up -d
+          sleep 30
+
+      - name: Wait for services to be ready
+        run: |
+          for i in {1..30}; do
+            if curl -sf http://localhost/health; then
+              echo "Backend is ready"
+              break
+            fi
+            echo "Waiting for backend... ($i/30)"
+            sleep 5
+          done
+
+      - name: Run E2E tests
+        working-directory: ./tests/e2e
+        env:
+          APP_URL: http://localhost
+          API_URL: http://localhost/api
+        run: npx playwright test
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: tests/e2e/playwright-report/
+          retention-days: 7
+
+      - name: Show container logs on failure
+        if: failure()
+        working-directory: ./docker
+        run: docker compose -f docker-compose.ci.yml logs
+
+      - name: Stop application stack
+        if: always()
+        working-directory: ./docker
+        run: docker compose -f docker-compose.ci.yml down -v
+
+      # Push images only if E2E tests passed
+      - name: Extract metadata for Backend
+        id: meta-backend
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend
@@ -254,41 +266,8 @@ jobs:
             type=ref,event=branch
             type=sha,prefix=
 
-      - name: Build and push Backend image
-        uses: docker/build-push-action@v5
-        with:
-          context: ./docker/backend
-          file: ./docker/backend/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  build-frontend:
-    name: Build Frontend
-    runs-on: ubuntu-latest
-    needs: [test-e2e, security-gitleaks]
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Log in to Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata
-        id: meta
+      - name: Extract metadata for Frontend
+        id: meta-frontend
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend
@@ -296,16 +275,25 @@ jobs:
             type=ref,event=branch
             type=sha,prefix=
 
-      - name: Build and push Frontend image
+      - name: Push Backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./docker/backend
+          file: ./docker/backend/Dockerfile
+          push: true
+          tags: ${{ steps.meta-backend.outputs.tags }}
+          labels: ${{ steps.meta-backend.outputs.labels }}
+          cache-from: type=gha,scope=backend
+
+      - name: Push Frontend image
         uses: docker/build-push-action@v5
         with:
           context: ./docker/frontend
           file: ./docker/frontend/Dockerfile
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: ${{ steps.meta-frontend.outputs.tags }}
+          labels: ${{ steps.meta-frontend.outputs.labels }}
+          cache-from: type=gha,scope=frontend
 
   # ===========================================
   # MERGE TO MAIN
@@ -313,7 +301,7 @@ jobs:
   merge-to-main:
     name: Merge to Main
     runs-on: ubuntu-latest
-    needs: [build-backend, build-frontend, security-trivy]
+    needs: [build-test-push]
     permissions:
       contents: write
 

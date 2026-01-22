@@ -3,9 +3,7 @@
 
 services:
   app:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: backend:test
     container_name: app
     environment:
       - POSTGRES_HOST=${POSTGRES_HOST:-db}
@@ -36,9 +34,7 @@ services:
       - devops-network
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: frontend:test
     container_name: frontend
     networks:
       - devops-network
