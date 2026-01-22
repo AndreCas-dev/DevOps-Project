@@ -122,6 +122,37 @@
 # =============================================================================
 # Deploy with Docker Compose
 # =============================================================================
+- name: Stop and remove existing containers
+  community.docker.docker_compose_v2:
+    project_src: "{{ app_docker_dir }}"
+    project_name: "{{ compose_project_name }}"
+    files:
+      - "{{ compose_file }}"
+      - "{{ compose_override_file }}"
+    state: absent
+    remove_orphans: true
+  become: true
+  ignore_errors: true
+
+- name: Force remove conflicting containers
+  community.docker.docker_container:
+    name: "{{ item }}"
+    state: absent
+    force_kill: true
+  loop:
+    - alertmanager
+    - prometheus
+    - grafana
+    - loki
+    - promtail
+    - nginx
+    - backend
+    - frontend
+    - postgres
+    - pgadmin
+  become: true
+  ignore_errors: true
+
 - name: Pull Docker images
   community.docker.docker_compose_v2:
     project_src: "{{ app_docker_dir }}"
