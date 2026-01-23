@@ -1,0 +1,67 @@
+# Docker Compose for Manual Testing Environment
+# Dedicated environment for developer manual testing before merging to main
+# Connects to external database VM (no containerized DB)
+
+services:
+  app:
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME}/backend:${IMAGE_TAG:-dev}
+    container_name: app-test
+    environment:
+      - POSTGRES_HOST=${POSTGRES_HOST}
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB:-test_manual_db}
+      - DEBUG=${DEBUG:-true}
+      - PORT=${PORT:-8000}
+    networks:
+      - devops-test-network
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  frontend:
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME}/frontend:${IMAGE_TAG:-dev}
+    container_name: frontend-test
+    networks:
+      - devops-test-network
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-test
+    ports:
+      - "${TEST_PORT:-8080}:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d/test.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+      - frontend
+      - pgadmin
+    networks:
+      - devops-test-network
+    restart: unless-stopped
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: pgadmin-test
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@test.local}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-admin}
+      - SCRIPT_NAME=/pgadmin
+    volumes:
+      - test-pgadmin-data:/var/lib/pgadmin
+    networks:
+      - devops-test-network
+    restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+networks:
+  devops-test-network:
+    driver: bridge
+
+volumes:
+  test-pgadmin-data:
+    name: devops-test-pgadmin-data

@@ -1,0 +1,83 @@
+---
+# Playbook: Setup PostgreSQL on Test Database VM
+# Purpose: Install and configure PostgreSQL for manual testing phase
+#
+# Usage:
+#   ansible-playbook -i inventory/test-db.ini playbooks/setup-postgresql.yml
+#
+# With SOPS decryption:
+#   sops -d ../../secrets/sops/secrets/test.yaml > /tmp/test-secrets.yaml
+#   ansible-playbook -i inventory/test-db.ini playbooks/setup-postgresql.yml -e "@/tmp/test-secrets.yaml"
+#   rm /tmp/test-secrets.yaml
+
+- name: Setup PostgreSQL for Test Environment
+  hosts: database
+  become: yes
+  gather_facts: yes
+
+  vars_files:
+    - ../group_vars/all.yml
+
+  vars:
+    # Override with SOPS secrets
+    vault_postgres_password: "{{ database.postgres_password | default('changeme') }}"
+    vault_app_user_password: "{{ app_user.password | default('changeme') }}"
+
+  pre_tasks:
+    - name: Display target information
+      debug:
+        msg: |
+          Setting up PostgreSQL on: {{ inventory_hostname }}
+          PostgreSQL Version: {{ postgresql_version | default('17') }}
+          Database: test_manual_db
+          Host IP: {{ ansible_host }}
+
+    - name: Verify connectivity
+      ping:
+
+  roles:
+    - role: postgresql
+
+  post_tasks:
+    - name: Verify PostgreSQL is running
+      systemd:
+        name: "{{ postgresql_service_name }}"
+      register: pg_status
+
+    - name: Display PostgreSQL status
+      debug:
+        msg: "PostgreSQL status: {{ pg_status.status.ActiveState }}"
+
+    - name: Test database connection
+      become: yes
+      become_user: postgres
+      postgresql_ping:
+        db: test_manual_db
+      register: db_ping
+
+    - name: Display connection test result
+      debug:
+        msg: "Database connection: {{ 'OK' if db_ping.is_available else 'FAILED' }}"
+
+    - name: Display connection information
+      debug:
+        msg: |
+          ==========================================
+          PostgreSQL Setup Complete!
+          ==========================================
+          Host: {{ ansible_host }}
+          Port: {{ postgresql_port | default(5432) }}
+          Database: test_manual_db
+
+          Users:
+            - postgres (superuser)
+            - app_user (application)
+
+          Connection string:
+            postgresql://app_user:PASSWORD@{{ ansible_host }}:5432/test_manual_db
+
+          GitHub Secrets to add:
+            TEST_DB_HOST = {{ ansible_host }}
+            TEST_POSTGRES_USER = app_user
+            TEST_POSTGRES_PASSWORD = (from test.yaml)
+          ==========================================

@@ -319,9 +319,9 @@ jobs:
         run: |
           mkdir -p secrets
           cat > secrets/.env.test << EOF
-          POSTGRES_HOST=db-test
+          POSTGRES_HOST=${{ secrets.TEST_DB_HOST }}
           POSTGRES_PORT=5432
-          POSTGRES_USER=postgres
+          POSTGRES_USER=${{ secrets.TEST_POSTGRES_USER }}
           POSTGRES_PASSWORD=${{ secrets.TEST_POSTGRES_PASSWORD }}
           POSTGRES_DB=test_manual_db
           PORT=8000
@@ -334,7 +334,11 @@ jobs:
           REGISTRY: ${{ env.REGISTRY }}
           IMAGE_NAME: ${{ env.IMAGE_NAME }}
           IMAGE_TAG: ${{ github.ref_name }}
+          POSTGRES_HOST: ${{ secrets.TEST_DB_HOST }}
+          POSTGRES_PORT: 5432
+          POSTGRES_USER: ${{ secrets.TEST_POSTGRES_USER }}
           POSTGRES_PASSWORD: ${{ secrets.TEST_POSTGRES_PASSWORD }}
+          POSTGRES_DB: test_manual_db
           TEST_PORT: 8080
         run: |
           docker compose -f docker-compose.test.yml pull
@@ -357,8 +361,12 @@ jobs:
           echo "=========================================="
           echo "TEST ENVIRONMENT READY FOR MANUAL TESTING"
           echo "=========================================="
-          echo "URL: http://${{ secrets.TEST_SERVER_HOST }}:8080"
-          echo "Database: test_manual_db (dedicated test database)"
+          echo "App URL: http://${{ secrets.TEST_SERVER_HOST }}:8080"
+          echo "pgAdmin: http://${{ secrets.TEST_SERVER_HOST }}:8080/pgadmin"
+          echo ""
+          echo "Database (External VM):"
+          echo "  Host: ${{ secrets.TEST_DB_HOST }}"
+          echo "  Database: test_manual_db"
           echo ""
           echo "Please perform manual testing and approve"
           echo "the 'manual-approval' job when ready to proceed."

@@ -1,0 +1,12 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Test Database",
+      "Group": "Test Environment",
+      "Port": 5432,
+      "MaintenanceDB": "test_manual_db",
+      "Username": "postgres",
+      "SSLMode": "prefer"
+    }
+  }
+}
