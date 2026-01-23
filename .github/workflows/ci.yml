@@ -116,6 +116,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_COMMENTS: false
           GITLEAKS_ARTIFACT_NAME: gitleaks-report-initial
+          GITLEAKS_CONFIG: ci-cd/security/gitleaks.toml
 
   security-trivy:
     name: Vulnerability Scan
@@ -499,7 +500,7 @@ jobs:
           sudo mv gitleaks /usr/local/bin/
 
       - name: Run Gitleaks
-        run: gitleaks detect --source . --verbose
+        run: gitleaks detect --source . --config ci-cd/security/gitleaks.toml --verbose
 
   post-approval-security-trivy:
     name: Post-Approval Vulnerability Scan

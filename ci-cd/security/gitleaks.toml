@@ -30,15 +30,22 @@ paths = [
     '''tests/.*''',
     '''docs/.*''',
     '''node_modules/.*''',
-    '''\.git/.*'''
+    '''\.git/.*''',
+    '''[Mm]onitoring/grafana/grafana\.ini$''',
+    '''[Mm]onitoring/alertmanager/alertmanager\.yml$'''
 ]
 
 # Specific commits to ignore (add as needed)
-# commits = ["commit-sha-here"]
+commits = [
+    "e064dd97e16558431adc69884d1c2198425332ba",
+    "cdffcd05f580d261e465ee8692cec19c8773e07c"
+]
 
 # Regex patterns to ignore
 regexes = [
     '''POSTGRES_PASSWORD=postgres''',
     '''GF_ADMIN_PASSWORD=admin''',
-    '''EXAMPLE_.*'''
+    '''EXAMPLE_.*''',
+    '''secret_key\s*=\s*SW2YcwTIb9zpOOhoPsMm''',
+    '''hooks\.slack\.com/services/.*'''
 ]
