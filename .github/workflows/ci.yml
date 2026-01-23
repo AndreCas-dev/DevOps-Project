@@ -296,12 +296,336 @@ jobs:
           cache-from: type=gha,scope=frontend
 
   # ===========================================
+  # DEPLOY TO TEST ENVIRONMENT
+  # ===========================================
+  deploy-test:
+    name: Deploy to Test Environment
+    runs-on: self-hosted
+    needs: [build-test-push]
+    environment: test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create test environment .env file
+        run: |
+          mkdir -p secrets
+          cat > secrets/.env.test << EOF
+          POSTGRES_HOST=db-test
+          POSTGRES_PORT=5432
+          POSTGRES_USER=postgres
+          POSTGRES_PASSWORD=${{ secrets.TEST_POSTGRES_PASSWORD }}
+          POSTGRES_DB=test_manual_db
+          PORT=8000
+          DEBUG=true
+          EOF
+
+      - name: Deploy to Test Environment
+        working-directory: ./docker
+        env:
+          REGISTRY: ${{ env.REGISTRY }}
+          IMAGE_NAME: ${{ env.IMAGE_NAME }}
+          IMAGE_TAG: ${{ github.ref_name }}
+          POSTGRES_PASSWORD: ${{ secrets.TEST_POSTGRES_PASSWORD }}
+          TEST_PORT: 8080
+        run: |
+          docker compose -f docker-compose.test.yml pull
+          docker compose -f docker-compose.test.yml up -d --force-recreate
+          sleep 30
+
+      - name: Health check Test Environment
+        run: |
+          for i in {1..30}; do
+            if curl -sf http://localhost:8080/health; then
+              echo "Test environment is ready!"
+              break
+            fi
+            echo "Waiting for test environment... ($i/30)"
+            sleep 5
+          done
+
+      - name: Display Test Environment URL
+        run: |
+          echo "=========================================="
+          echo "TEST ENVIRONMENT READY FOR MANUAL TESTING"
+          echo "=========================================="
+          echo "URL: http://${{ secrets.TEST_SERVER_HOST }}:8080"
+          echo "Database: test_manual_db (dedicated test database)"
+          echo ""
+          echo "Please perform manual testing and approve"
+          echo "the 'manual-approval' job when ready to proceed."
+          echo "=========================================="
+
+  # ===========================================
+  # MANUAL APPROVAL GATE
+  # ===========================================
+  manual-approval:
+    name: Manual Testing Approval
+    runs-on: ubuntu-latest
+    needs: [deploy-test]
+    environment:
+      name: manual-testing
+      url: http://${{ secrets.TEST_SERVER_HOST }}:8080
+
+    steps:
+      - name: Approval checkpoint
+        run: |
+          echo "=========================================="
+          echo "MANUAL TESTING APPROVED"
+          echo "=========================================="
+          echo "Developer has completed manual testing."
+          echo "Proceeding with final tests and merge..."
+          echo "=========================================="
+
+  # ===========================================
+  # POST-APPROVAL: RE-RUN ALL TESTS
+  # ===========================================
+  post-approval-backend-tests:
+    name: Post-Approval Backend Tests
+    runs-on: ubuntu-latest
+    needs: [manual-approval]
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './docker/backend/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: ./docker/backend
+        run: npm ci
+
+      - name: Build TypeScript
+        working-directory: ./docker/backend
+        run: npm run build
+
+      - name: Run tests
+        working-directory: ./docker/backend
+        env:
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: 5432
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: test_db
+        run: npm test
+
+  post-approval-frontend-tests:
+    name: Post-Approval Frontend Tests
+    runs-on: ubuntu-latest
+    needs: [manual-approval]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './docker/frontend/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: ./docker/frontend
+        run: npm ci
+
+      - name: Build
+        working-directory: ./docker/frontend
+        run: npm run build
+
+      - name: Run tests
+        working-directory: ./docker/frontend
+        run: npm test
+
+  post-approval-security-gitleaks:
+    name: Post-Approval Secret Detection
+    runs-on: ubuntu-latest
+    needs: [manual-approval]
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Run Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: false
+
+  post-approval-security-trivy:
+    name: Post-Approval Vulnerability Scan
+    runs-on: ubuntu-latest
+    needs: [manual-approval]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Trivy scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          severity: 'CRITICAL,HIGH'
+
+  post-approval-e2e-tests:
+    name: Post-Approval E2E Tests
+    runs-on: ubuntu-latest
+    needs: [manual-approval]
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull images from registry
+        run: |
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend:${{ github.ref_name }}
+          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:${{ github.ref_name }}
+          docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/backend:${{ github.ref_name }} backend:test
+          docker tag ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/frontend:${{ github.ref_name }} frontend:test
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: './tests/e2e/package-lock.json'
+
+      - name: Install E2E dependencies
+        working-directory: ./tests/e2e
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: ./tests/e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Create .env file
+        run: |
+          mkdir -p secrets
+          cat > secrets/.env << EOF
+          POSTGRES_HOST=db
+          POSTGRES_PORT=5432
+          POSTGRES_USER=postgres
+          POSTGRES_PASSWORD=postgres
+          POSTGRES_DB=Test
+          PORT=8000
+          DEBUG=false
+          EOF
+
+      - name: Start application stack
+        working-directory: ./docker
+        run: |
+          docker compose -f docker-compose.ci.yml up -d
+          sleep 30
+
+      - name: Wait for services to be ready
+        run: |
+          for i in {1..30}; do
+            if curl -sf http://localhost/health; then
+              echo "Backend is ready"
+              break
+            fi
+            echo "Waiting for backend... ($i/30)"
+            sleep 5
+          done
+
+      - name: Run E2E tests
+        working-directory: ./tests/e2e
+        env:
+          APP_URL: http://localhost
+          API_URL: http://localhost/api
+        run: npx playwright test
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-post-approval
+          path: tests/e2e/playwright-report/
+          retention-days: 7
+
+      - name: Show container logs on failure
+        if: failure()
+        working-directory: ./docker
+        run: docker compose -f docker-compose.ci.yml logs
+
+      - name: Stop application stack
+        if: always()
+        working-directory: ./docker
+        run: docker compose -f docker-compose.ci.yml down -v
+
+  # ===========================================
+  # CLEANUP TEST ENVIRONMENT
+  # ===========================================
+  cleanup-test:
+    name: Cleanup Test Environment
+    runs-on: self-hosted
+    needs: [post-approval-backend-tests, post-approval-frontend-tests, post-approval-security-gitleaks, post-approval-security-trivy, post-approval-e2e-tests]
+    if: always()
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Stop Test Environment
+        working-directory: ./docker
+        run: |
+          docker compose -f docker-compose.test.yml down -v || true
+          echo "Test environment cleaned up"
+
+  # ===========================================
   # MERGE TO MAIN
   # ===========================================
   merge-to-main:
     name: Merge to Main
     runs-on: ubuntu-latest
-    needs: [build-test-push]
+    needs: [post-approval-backend-tests, post-approval-frontend-tests, post-approval-security-gitleaks, post-approval-security-trivy, post-approval-e2e-tests]
     permissions:
       contents: write
 
@@ -324,10 +648,10 @@ jobs:
           git push origin main
 
   # ===========================================
-  # DEPLOY TO SERVER
+  # DEPLOY TO DEV SERVER
   # ===========================================
   deploy:
-    name: Deploy to Server
+    name: Deploy to Dev Server
     runs-on: self-hosted
     needs: [merge-to-main]
 
@@ -355,14 +679,14 @@ jobs:
           ansible-playbook \
             -i ../../inventory.ini \
             playbooks/deploy-app.yml \
-            -e "deploy_env=production" \
+            -e "deploy_env=dev" \
             -e "pull_images=true" \
             -e "build_images=false" \
-            -e '{"database": {"postgres_host": "db", "postgres_port": 5432, "postgres_user": "postgres", "postgres_password": "${{ secrets.POSTGRES_PASSWORD }}", "postgres_db": "devops_prod"}}' \
-            -e '{"app": {"debug": "false"}}' \
+            -e '{"database": {"postgres_host": "db", "postgres_port": 5432, "postgres_user": "postgres", "postgres_password": "${{ secrets.POSTGRES_PASSWORD }}", "postgres_db": "devops_dev"}}' \
+            -e '{"app": {"debug": "true"}}' \
             -e '{"nginx": {"port": 80}}' \
             -e '{"monitoring": {"grafana_admin_user": "admin", "grafana_admin_password": "${{ secrets.GRAFANA_PASSWORD }}"}}' \
-            -e '{"pgadmin": {"email": "admin@prod.local", "password": "${{ secrets.PGADMIN_PASSWORD }}"}}' \
+            -e '{"pgadmin": {"email": "admin@dev.local", "password": "${{ secrets.PGADMIN_PASSWORD }}"}}' \
             -v
 
       - name: Health check
@@ -373,8 +697,8 @@ jobs:
 
       - name: Notify on success
         if: success()
-        run: echo "Deployment successful!"
+        run: echo "Deployment to Dev Server successful!"
 
       - name: Notify on failure
         if: failure()
-        run: echo "Deployment failed!"
+        run: echo "Deployment to Dev Server failed!"
