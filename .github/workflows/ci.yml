@@ -115,6 +115,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_COMMENTS: false
+          GITLEAKS_ARTIFACT_NAME: gitleaks-report-initial
 
   security-trivy:
     name: Vulnerability Scan
@@ -497,6 +498,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITLEAKS_ENABLE_COMMENTS: false
+          GITLEAKS_ARTIFACT_NAME: gitleaks-report-post-approval
 
   post-approval-security-trivy:
     name: Post-Approval Vulnerability Scan
