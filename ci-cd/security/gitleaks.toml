@@ -47,5 +47,7 @@ regexes = [
     '''GF_ADMIN_PASSWORD=admin''',
     '''EXAMPLE_.*''',
     '''secret_key\s*=\s*SW2YcwTIb9zpOOhoPsMm''',
-    '''hooks\.slack\.com/services/.*'''
+    '''hooks\.slack\.com/services/.*''',
+    '''\{\{\s*item\.password\s*\}\}''',
+    '''\{\{\s*[\w\.]+\s*\}\}'''
 ]

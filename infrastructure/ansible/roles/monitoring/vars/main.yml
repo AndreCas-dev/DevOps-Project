@@ -19,7 +19,7 @@ monitoring_prometheus_scrape_interval: "15s"
 prometheus_external_url: "/prometheus"
 
 # Server domain (for Grafana root_url)
-grafana_domain: "{{ domain_name | default(ansible_host) | default('localhost') }}"
+grafana_domain: "{{ domain_name | default(ansible_host) }}"
 
 # Grafana settings - use _default suffix to avoid recursion
 monitoring_grafana_admin_user: "admin"

@@ -20,15 +20,15 @@
 
   vars:
     # Override with SOPS secrets
-    vault_postgres_password: "{{ database.postgres_password | default('changeme') }}"
-    vault_app_user_password: "{{ app_user.password | default('changeme') }}"
+    vault_postgres_password: "{{ database.postgres_password }}"
+    vault_app_user_password: "{{ app_user.password }}"
 
   pre_tasks:
     - name: Display target information
       debug:
         msg: |
           Setting up PostgreSQL on: {{ inventory_hostname }}
-          PostgreSQL Version: {{ postgresql_version | default('17') }}
+          PostgreSQL Version: {{ postgresql_version }}
           Database: test_manual_db
           Host IP: {{ ansible_host }}
 
@@ -66,7 +66,7 @@
           PostgreSQL Setup Complete!
           ==========================================
           Host: {{ ansible_host }}
-          Port: {{ postgresql_port | default(5432) }}
+          Port: {{ postgresql_port }}
           Database: test_manual_db
 
           Users:
