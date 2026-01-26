@@ -45,6 +45,19 @@
     mode: preserve
   become: true
 
+# Template alertmanager config with Slack webhook URL
+- name: Template Alertmanager configuration
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../roles/monitoring/templates/alertmanager.yml.j2"
+    dest: "{{ app_monitoring_dir }}/alertmanager/alertmanager.yml"
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0644'
+  become: true
+  vars:
+    slack_webhook_url: "{{ monitoring_slack_webhook_url | default('') }}"
+    slack_channel: "{{ monitoring_slack_channel | default('#alerts') }}"
+
 - name: Copy logging directory
   ansible.builtin.copy:
     src: "{{ project_root }}/logging/"
