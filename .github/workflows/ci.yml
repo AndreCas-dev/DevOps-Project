@@ -709,6 +709,8 @@ jobs:
             -e '{"nginx": {"port": 80}}' \
             -e '{"monitoring": {"grafana_admin_user": "admin", "grafana_admin_password": "${{ secrets.GRAFANA_PASSWORD }}"}}' \
             -e '{"pgadmin": {"email": "admin@dev.local", "password": "${{ secrets.PGADMIN_PASSWORD }}"}}' \
+            -e "monitoring_slack_webhook_url=${{ secrets.SLACK_WEBHOOK_URL }}" \
+            -e "monitoring_slack_channel=#alertmanager" \
             -v
 
       - name: Health check
