@@ -101,17 +101,34 @@ services:
     networks:
       - devops-network
 
+  alertmanager-init:
+    image: alpine:latest
+    container_name: alertmanager-init
+    env_file:
+      - ../secrets/.env
+    volumes:
+      - ../monitoring/alertmanager/alertmanager.yml:/tmp/alertmanager.yml.template:ro
+      - alertmanager-config:/etc/alertmanager
+    command: >
+      sh -c "apk add --no-cache gettext &&
+             envsubst < /tmp/alertmanager.yml.template > /etc/alertmanager/alertmanager.yml"
+    networks:
+      - devops-network
+
   alertmanager:
     image: prom/alertmanager:latest
     container_name: alertmanager
     restart: unless-stopped
     volumes:
-      - ../monitoring/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-config:/etc/alertmanager:ro
       - ../volumes/alertmanager-data:/alertmanager
     command:
       - '--config.file=/etc/alertmanager/alertmanager.yml'
       - '--storage.path=/alertmanager'
       - '--web.external-url=http://localhost/alertmanager'
+    depends_on:
+      alertmanager-init:
+        condition: service_completed_successfully
     networks:
       - devops-network
 
@@ -221,3 +238,4 @@ networks:
 volumes:
   postgres_data:
   pgadmin_data:
+  alertmanager-config:
