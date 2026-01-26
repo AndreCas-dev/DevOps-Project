@@ -18,12 +18,12 @@ backup_schedule_weekday: "*"
 
 # Database settings
 backup_postgres_container: "db"
-backup_postgres_user: "{{ postgres_user | default('postgres') }}"
-backup_postgres_db: "{{ postgres_db | default('Test') }}"
+backup_postgres_user: "{{ postgres_user }}"
+backup_postgres_db: "{{ postgres_db }}"
 
 # Paths
-backup_compose_dir: "{{ docker_compose_dir | default('/opt/devops-app') }}/docker"
-backup_volumes_dir: "{{ docker_compose_dir | default('/opt/devops-app') }}/volumes"
+backup_compose_dir: "{{ docker_compose_dir }}/docker"
+backup_volumes_dir: "{{ docker_compose_dir }}/volumes"
 
 # Notification settings (optional)
 backup_notification_enabled: false

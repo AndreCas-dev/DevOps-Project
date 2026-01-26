@@ -14,16 +14,16 @@ ssl_key_path: "/etc/ssl/private/{{ domain_name }}.key"
 # PostgreSQL credentials - use vault for actual values
 # ansible-vault encrypt_string 'your_password' --name 'postgres_password'
 postgres_user: "{{ vault_postgres_user | default('postgres') }}"
-postgres_password: "{{ vault_postgres_password | default('changeme') }}"
+postgres_password: "{{ vault_postgres_password }}"
 postgres_db: "{{ vault_postgres_db | default('production_db') }}"
 
 # Grafana admin credentials - use vault for actual values
-grafana_admin_user: "{{ vault_grafana_admin_user | default('admin') }}"
-grafana_admin_password: "{{ vault_grafana_admin_password | default('changeme') }}"
+grafana_admin_user: "{{ vault_grafana_admin_user }}"
+grafana_admin_password: "{{ vault_grafana_admin_password }}"
 
 # PgAdmin credentials - use vault for actual values
 pgadmin_email: "{{ vault_pgadmin_email | default('admin@example.com') }}"
-pgadmin_password: "{{ vault_pgadmin_password | default('changeme') }}"
+pgadmin_password: "{{ vault_pgadmin_password }}"
 
 # Alertmanager settings
 alertmanager_slack_webhook: "{{ vault_slack_webhook | default('') }}"

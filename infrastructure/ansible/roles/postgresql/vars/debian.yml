@@ -1,0 +1,5 @@
+---
+# Debian/Ubuntu specific variables
+postgresql_config_path: "/etc/postgresql/{{ postgresql_version }}/main"
+postgresql_data_path: "/var/lib/postgresql/{{ postgresql_version }}/main"
+postgresql_service_name: "postgresql"

@@ -1,0 +1,58 @@
+---
+# PostgreSQL Version
+postgresql_version: "17"
+
+# Connection Settings
+postgresql_port: 5432
+postgresql_listen_addresses: "*"
+postgresql_max_connections: 100
+
+# Performance Tuning (adjust based on VM resources)
+postgresql_shared_buffers: "256MB"
+postgresql_effective_cache_size: "1GB"
+postgresql_work_mem: "16MB"
+postgresql_maintenance_work_mem: "128MB"
+
+# WAL Settings
+postgresql_wal_level: "replica"
+postgresql_max_wal_senders: 3
+
+# Logging
+postgresql_log_destination: "stderr"
+postgresql_logging_collector: "on"
+postgresql_log_directory: "log"
+postgresql_log_filename: "postgresql-%Y-%m-%d_%H%M%S.log"
+postgresql_log_statement: "ddl"
+
+# Security
+postgresql_ssl: "off"
+postgresql_password_encryption: "scram-sha-256"
+
+# Firewall
+postgresql_open_firewall: true
+postgresql_allowed_hosts:
+  - "0.0.0.0/0"  # Adjust to your network CIDR for security
+
+# OS-specific paths (Debian/Ubuntu)
+postgresql_config_path: "/etc/postgresql/{{ postgresql_version }}/main"
+postgresql_data_path: "/var/lib/postgresql/{{ postgresql_version }}/main"
+postgresql_service_name: "postgresql"
+
+# Users to create
+postgresql_users:
+  - name: postgres
+    password: "{{ vault_postgres_password | default('changeme') }}"
+    role_attr_flags: "SUPERUSER,CREATEDB,CREATEROLE,LOGIN"
+  - name: app_user
+    password: "{{ vault_app_user_password | default('changeme') }}"
+    role_attr_flags: "CREATEDB,LOGIN"
+
+# Databases to create
+postgresql_databases:
+  - name: test_manual_db
+    owner: postgres
+
+# Privileges
+postgresql_privileges:
+  - database: test_manual_db
+    user: app_user
