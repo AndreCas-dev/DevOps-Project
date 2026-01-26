@@ -1,8 +1,8 @@
-{% set webhook_url = slack_webhook_url | default(monitoring_slack_webhook_url) %}
+{% set webhook_url = slack_webhook_url | default(monitoring_slack_webhook_url) | default('', true) %}
 {% set channel = slack_channel | default(monitoring_slack_channel) %}
 global:
   resolve_timeout: 5m
-{% if webhook_url %}
+{% if webhook_url | length > 0 %}
   slack_api_url: '{{ webhook_url }}'
 {% endif %}
 
@@ -23,7 +23,7 @@ route:
 
 receivers:
   - name: 'default-receiver'
-{% if webhook_url %}
+{% if webhook_url | length > 0 %}
     slack_configs:
       - channel: '{{ channel }}'
         send_resolved: true
@@ -42,7 +42,7 @@ receivers:
 {% endif %}
 
   - name: 'critical-receiver'
-{% if webhook_url %}
+{% if webhook_url | length > 0 %}
     slack_configs:
       - channel: '{{ channel }}'
         send_resolved: true
@@ -60,7 +60,7 @@ receivers:
 {% endif %}
 
   - name: 'warning-receiver'
-{% if webhook_url %}
+{% if webhook_url | length > 0 %}
     slack_configs:
       - channel: '{{ channel }}'
         send_resolved: true
