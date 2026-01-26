@@ -151,6 +151,8 @@ jobs:
             -e "pull_images=true" \
             -e "build_images=false" \
             -e "app_version=${{ needs.validate.outputs.version }}" \
+            -e "monitoring_slack_webhook_url=${{ secrets.SLACK_WEBHOOK_URL }}" \
+            -e "monitoring_slack_channel=#alertmanager" \
             -v
 
       - name: Health check
