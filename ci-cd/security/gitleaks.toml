@@ -32,7 +32,8 @@ paths = [
     '''node_modules/.*''',
     '''\.git/.*''',
     '''[Mm]onitoring/grafana/grafana\.ini$''',
-    '''[Mm]onitoring/alertmanager/alertmanager\.yml$'''
+    '''[Mm]onitoring/alertmanager/alertmanager\.yml$''',
+    '''infrastructure/ansible/group_vars/.*\.yml$'''
 ]
 
 # Specific commits to ignore (add as needed)
@@ -49,5 +50,6 @@ regexes = [
     '''secret_key\s*=\s*SW2YcwTIb9zpOOhoPsMm''',
     '''hooks\.slack\.com/services/.*''',
     '''\{\{\s*item\.password\s*\}\}''',
-    '''\{\{\s*[\w\.]+\s*\}\}'''
+    '''\{\{\s*[\w\.]+\s*\}\}''',
+    '''\{\{\s*vault_[\w]+\s*\}\}'''
 ]
