@@ -7,48 +7,80 @@ on:
     inputs:
       version:
         description: 'Version tag to deploy (e.g., v1.0.0)'
-        required: true
+        required: false
         type: string
       skip_approval:
         description: 'Skip manual approval (not recommended)'
         required: false
         default: false
         type: boolean
+  workflow_run:
+    workflows: ["CI Pipeline"]
+    types: [completed]
+    branches: [main]
 
 env:
   ENVIRONMENT: production
-  ANSIBLE_HOST_KEY_CHECKING: 'false'
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository_owner }}/${{ github.event.repository.name }}
 
 jobs:
+  # ===========================================
+  # VALIDATE RELEASE
+  # ===========================================
   validate:
     name: Validate Release
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     outputs:
       version: ${{ steps.version.outputs.version }}
+      trigger: ${{ steps.trigger.outputs.type }}
 
     steps:
+      - name: Determine trigger type
+        id: trigger
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_run" ]; then
+            echo "type=auto" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "type=manual" >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "release" ]; then
+            echo "type=release" >> $GITHUB_OUTPUT
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: main
 
       - name: Determine version
         id: version
         run: |
           if [ "${{ github.event_name }}" == "release" ]; then
             echo "version=${{ github.event.release.tag_name }}" >> $GITHUB_OUTPUT
-          else
+          elif [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ github.event.inputs.version }}" ]; then
             echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            SHORT_SHA=$(git rev-parse --short HEAD)
+            echo "version=main-${SHORT_SHA}" >> $GITHUB_OUTPUT
           fi
 
       - name: Validate version format
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Invalid version format: $VERSION"
-            echo "Expected format: vX.Y.Z"
-            exit 1
+          TRIGGER="${{ steps.trigger.outputs.type }}"
+          if [ "$TRIGGER" == "release" ]; then
+            if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "Invalid version format: $VERSION"
+              echo "Expected format: vX.Y.Z"
+              exit 1
+            fi
           fi
-          echo "Version $VERSION is valid"
+          echo "Version: $VERSION (trigger: $TRIGGER)"
 
+  # ===========================================
+  # SECURITY SCAN
+  # ===========================================
   security-scan:
     name: Security Scan
     needs: [validate]
@@ -58,6 +90,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
 
       - name: Run Gitleaks
@@ -74,83 +107,85 @@ jobs:
           format: 'table'
           severity: 'CRITICAL,HIGH'
 
+  # ===========================================
+  # MANUAL APPROVAL (release and manual only)
+  # ===========================================
   approval:
-    name: Manual Approval
+    name: Production Approval
     needs: [validate, security-scan]
-    if: ${{ github.event.inputs.skip_approval != 'true' }}
+    if: ${{ needs.validate.outputs.trigger != 'auto' && github.event.inputs.skip_approval != 'true' }}
     runs-on: ubuntu-latest
+    environment: production
 
     steps:
       - name: Approval checkpoint
         run: |
-          echo "Deployment to production approved"
+          echo "=========================================="
+          echo "PRODUCTION DEPLOYMENT APPROVED"
+          echo "=========================================="
           echo "Version: ${{ needs.validate.outputs.version }}"
+          echo "Trigger: ${{ needs.validate.outputs.trigger }}"
+          echo "=========================================="
 
+  # ===========================================
+  # DEPLOY TO PRODUCTION (local server)
+  # ===========================================
   deploy:
     name: Deploy to Production
     needs: [validate, security-scan, approval]
-    if: always() && needs.security-scan.result == 'success' && (needs.approval.result == 'success' || needs.approval.result == 'skipped')
-    runs-on: ubuntu-latest
+    if: |
+      always() &&
+      needs.validate.result == 'success' &&
+      needs.security-scan.result == 'success' &&
+      (needs.approval.result == 'success' || needs.approval.result == 'skipped')
+    runs-on: self-hosted
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.validate.outputs.version }}
+          ref: main
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
         with:
-          python-version: '3.11'
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install Ansible and SOPS
+      - name: Create backup before deploy
         run: |
-          pip install ansible ansible-core
-          ansible-galaxy collection install community.docker community.general
-
-          # Install SOPS
-          curl -LO https://github.com/getsops/sops/releases/download/v3.8.1/sops-v3.8.1.linux.amd64
-          chmod +x sops-v3.8.1.linux.amd64
-          sudo mv sops-v3.8.1.linux.amd64 /usr/local/bin/sops
-
-      - name: Configure SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.PROD_SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.PROD_SERVER_HOST }} >> ~/.ssh/known_hosts
-
-      - name: Configure SOPS Age key
-        run: |
-          mkdir -p ~/.config/sops/age
-          echo "${{ secrets.SOPS_AGE_KEY }}" > ~/.config/sops/age/keys.txt
-          chmod 600 ~/.config/sops/age/keys.txt
+          echo "Creating pre-deployment database backup..."
+          docker compose -f /opt/devops-app/docker/docker-compose.yml exec -T db \
+            pg_dump -U postgres devops_prod > /var/backups/pre-deploy-$(date +%Y%m%d%H%M%S).sql || echo "Backup skipped (no existing deployment)"
 
       - name: Create inventory file
         run: |
           cat > inventory.ini << EOF
           [webservers]
-          prod-server ansible_host=${{ secrets.PROD_SERVER_HOST }} ansible_user=${{ secrets.PROD_SSH_USER }}
-          EOF
+          localhost ansible_connection=local
 
-      - name: Create backup before deploy
-        run: |
-          ssh -i ~/.ssh/id_rsa ${{ secrets.PROD_SSH_USER }}@${{ secrets.PROD_SERVER_HOST }} \
-            "cd /opt/devops-app && docker compose exec -T db pg_dump -U postgres postgres > /var/backups/pre-deploy-$(date +%Y%m%d%H%M%S).sql" || true
+          [production:children]
+          webservers
+          EOF
 
       - name: Deploy with Ansible
         working-directory: ./infrastructure/ansible
         env:
           ANSIBLE_CONFIG: ./ansible.cfg
-          SOPS_AGE_KEY_FILE: ~/.config/sops/age/keys.txt
         run: |
           ansible-playbook \
             -i ../../inventory.ini \
             playbooks/deploy-app.yml \
-            -e "environment=production" \
+            -e "deploy_env=production" \
             -e "pull_images=true" \
             -e "build_images=false" \
             -e "app_version=${{ needs.validate.outputs.version }}" \
+            -e '{"database": {"postgres_host": "db", "postgres_port": 5432, "postgres_user": "postgres", "postgres_password": "${{ secrets.POSTGRES_PASSWORD }}", "postgres_db": "devops_prod"}}' \
+            -e '{"app": {"debug": "false"}}' \
+            -e '{"nginx": {"port": 80}}' \
+            -e '{"monitoring": {"grafana_admin_user": "admin", "grafana_admin_password": "${{ secrets.GRAFANA_PASSWORD }}"}}' \
+            -e '{"pgadmin": {"email": "admin@prod.local", "password": "${{ secrets.PGADMIN_PASSWORD }}"}}' \
             -e "monitoring_slack_webhook_url=${{ secrets.SLACK_WEBHOOK_URL }}" \
             -e "monitoring_slack_channel=#alertmanager" \
             -v
@@ -159,7 +194,7 @@ jobs:
         run: |
           sleep 30
           for i in {1..5}; do
-            if curl -sf http://${{ secrets.PROD_SERVER_HOST }}/health; then
+            if curl -sf http://localhost/health; then
               echo "Health check passed!"
               exit 0
             fi
@@ -171,16 +206,19 @@ jobs:
 
       - name: Verify deployment
         run: |
-          # Check all critical services
-          curl -sf http://${{ secrets.PROD_SERVER_HOST }}/prometheus/-/healthy || echo "Prometheus warning"
-          curl -sf http://${{ secrets.PROD_SERVER_HOST }}/grafana/api/health || echo "Grafana warning"
+          curl -sf http://localhost/prometheus/-/healthy || echo "Prometheus warning"
+          curl -sf http://localhost/grafana/api/health || echo "Grafana warning"
           echo "Deployment verification completed"
 
       - name: Notify on success
         if: success()
         run: |
-          echo "Production deployment successful!"
+          echo "=========================================="
+          echo "PRODUCTION DEPLOYMENT SUCCESSFUL"
+          echo "=========================================="
           echo "Version: ${{ needs.validate.outputs.version }}"
+          echo "Trigger: ${{ needs.validate.outputs.trigger }}"
+          echo "=========================================="
 
       - name: Rollback on failure
         if: failure()
