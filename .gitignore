@@ -1,4 +1,7 @@
 /secrets
+/secrets/sops/keys/
+/secrets/sops/secrets/*.yaml
+!/secrets/sops/secrets/*.enc.yaml
 /volumes
 
 *.retry
