@@ -98,6 +98,8 @@ services:
       - '--storage.tsdb.path=/prometheus'
       - '--web.external-url=/prometheus'
       - '--web.enable-lifecycle'
+      - '--storage.tsdb.retention.time=15d'
+      - '--storage.tsdb.retention.size=5GB'
     networks:
       - devops-network
 

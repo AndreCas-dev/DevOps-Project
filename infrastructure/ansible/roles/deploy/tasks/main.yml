@@ -116,6 +116,7 @@
     - ""
     - chunks
     - rules
+    - compactor
   become: true
 
 # =============================================================================
@@ -235,3 +236,30 @@
 - name: Display health check result
   ansible.builtin.debug:
     msg: "Application is {{ 'healthy' if health_check.status is defined and health_check.status in [200, 301, 302] else 'not responding yet' }}"
+
+# =============================================================================
+# Cleanup and maintenance
+# =============================================================================
+- name: Setup weekly Docker cleanup cron job
+  ansible.builtin.cron:
+    name: "Docker system cleanup"
+    minute: "0"
+    hour: "4"
+    day: "*"
+    month: "*"
+    weekday: "0"
+    job: "docker image prune -af --filter 'until=168h' && docker builder prune -af --filter 'until=168h' && docker volume prune -f --filter 'label!=keep' > /var/log/docker-cleanup.log 2>&1"
+    user: root
+  become: true
+
+- name: Setup pre-deploy backup cleanup cron job
+  ansible.builtin.cron:
+    name: "Pre-deploy backup cleanup"
+    minute: "30"
+    hour: "3"
+    day: "*"
+    month: "*"
+    weekday: "*"
+    job: "find /var/backups/pre-deploy -name '*.sql' -mtime +7 -delete 2>/dev/null || true"
+    user: root
+  become: true
