@@ -19,8 +19,16 @@
     - "{{ app_docker_dir }}"
     - "{{ app_monitoring_dir }}"
     - "{{ app_logging_dir }}"
-    - "{{ app_secrets_dir }}"
     - "{{ app_volumes_dir }}"
+  become: true
+
+- name: Create secrets directory with restricted permissions
+  ansible.builtin.file:
+    path: "{{ app_secrets_dir }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: '0700'
   become: true
 
 # =============================================================================
@@ -130,7 +138,15 @@
     group: "{{ app_group }}"
     mode: '0600'
   become: true
-  # no_log: true  # Temporarily disabled for debugging
+  no_log: true
+
+- name: Enforce strict permissions on all secrets files
+  ansible.builtin.shell: |
+    find {{ app_secrets_dir }} -type f -exec chmod 0600 {} \;
+    find {{ app_secrets_dir }} -type d -exec chmod 0700 {} \;
+    chown -R {{ app_user }}:{{ app_group }} {{ app_secrets_dir }}
+  become: true
+  changed_when: true
 
 # =============================================================================
 # Deploy with Docker Compose
