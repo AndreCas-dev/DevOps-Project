@@ -157,11 +157,11 @@ jobs:
       - name: Create backup before deploy
         run: |
           echo "Creating pre-deployment database backup..."
-          mkdir -p /var/backups/pre-deploy
-          docker compose -f /opt/devops-app/docker/docker-compose.yml exec -T db \
-            pg_dump -U postgres devops_prod > /var/backups/pre-deploy/$(date +%Y%m%d%H%M%S).sql || echo "Backup skipped (no existing deployment)"
+          sudo mkdir -p /var/backups/pre-deploy
+          sudo docker compose -f /opt/devops-app/docker/docker-compose.yml exec -T db \
+            pg_dump -U postgres devops_prod | sudo tee /var/backups/pre-deploy/$(date +%Y%m%d%H%M%S).sql > /dev/null || echo "Backup skipped (no existing deployment)"
           # Keep only last 5 pre-deploy backups
-          ls -t /var/backups/pre-deploy/*.sql 2>/dev/null | tail -n +6 | xargs -r rm -f
+          sudo ls -t /var/backups/pre-deploy/*.sql 2>/dev/null | tail -n +6 | sudo xargs -r rm -f
 
       - name: Create inventory file
         run: |
@@ -217,9 +217,9 @@ jobs:
       - name: Cleanup Docker resources
         run: |
           echo "Cleaning up unused Docker resources..."
-          docker image prune -af --filter "until=168h"
-          docker builder prune -af --filter "until=168h"
-          docker volume prune -f --filter "label!=keep"
+          sudo docker image prune -af --filter "until=168h"
+          sudo docker builder prune -af --filter "until=168h"
+          sudo docker volume prune -f --filter "label!=keep"
           echo "Cleanup completed"
 
       - name: Notify on success
