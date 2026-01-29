@@ -340,7 +340,7 @@ jobs:
 
       - name: Generate pgAdmin server config
         run: |
-          cat > docker/pgadmin/servers-test.json << EOF
+          cat > docker/pgadmin/servers-test.json <<'JSONEOF'
           {
             "Servers": {
               "1": {
@@ -354,7 +354,8 @@ jobs:
               }
             }
           }
-          EOF
+          JSONEOF
+          cat docker/pgadmin/servers-test.json
 
       - name: Deploy to Test Environment
         working-directory: ./docker
