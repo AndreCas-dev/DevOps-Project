@@ -236,8 +236,8 @@ jobs:
       - name: Run E2E tests
         working-directory: ./tests/e2e
         env:
-          APP_URL: http://localhost
-          API_URL: http://localhost/api
+          APP_URL: http://127.0.0.1
+          API_URL: http://127.0.0.1/api
         run: npx playwright test
 
       - name: Upload Playwright report
@@ -619,8 +619,8 @@ jobs:
       - name: Run E2E tests
         working-directory: ./tests/e2e
         env:
-          APP_URL: http://localhost
-          API_URL: http://localhost/api
+          APP_URL: http://127.0.0.1
+          API_URL: http://127.0.0.1/api
         run: npx playwright test
 
       - name: Upload Playwright report
