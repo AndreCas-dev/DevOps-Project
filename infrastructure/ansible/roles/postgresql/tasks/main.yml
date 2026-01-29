@@ -49,21 +49,6 @@
     update_cache: yes
   when: ansible_os_family == "Debian"
 
-- name: Install PostgreSQL (RedHat/CentOS)
-  yum:
-    name:
-      - postgresql{{ postgresql_version | replace('.', '') }}-server
-      - postgresql{{ postgresql_version | replace('.', '') }}-contrib
-      - python3-psycopg2
-    state: present
-  when: ansible_os_family == "RedHat"
-
-- name: Initialize PostgreSQL database (RedHat/CentOS)
-  command: /usr/pgsql-{{ postgresql_version }}/bin/postgresql-{{ postgresql_version }}-setup initdb
-  args:
-    creates: /var/lib/pgsql/{{ postgresql_version }}/data/PG_VERSION
-  when: ansible_os_family == "RedHat"
-
 # ============================================
 # Configuration
 # ============================================
