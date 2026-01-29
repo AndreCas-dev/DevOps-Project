@@ -236,8 +236,8 @@ jobs:
       - name: Run E2E tests
         working-directory: ./tests/e2e
         env:
-          APP_URL: http://localhost
-          API_URL: http://localhost/api
+          APP_URL: http://127.0.0.1
+          API_URL: http://127.0.0.1/api
         run: npx playwright test
 
       - name: Upload Playwright report
@@ -340,7 +340,7 @@ jobs:
 
       - name: Generate pgAdmin server config
         run: |
-          cat > docker/pgadmin/servers-test.json << EOF
+          cat > docker/pgadmin/servers-test.json <<'JSONEOF'
           {
             "Servers": {
               "1": {
@@ -354,7 +354,8 @@ jobs:
               }
             }
           }
-          EOF
+          JSONEOF
+          cat docker/pgadmin/servers-test.json
 
       - name: Deploy to Test Environment
         working-directory: ./docker
@@ -618,8 +619,8 @@ jobs:
       - name: Run E2E tests
         working-directory: ./tests/e2e
         env:
-          APP_URL: http://localhost
-          API_URL: http://localhost/api
+          APP_URL: http://127.0.0.1
+          API_URL: http://127.0.0.1/api
         run: npx playwright test
 
       - name: Upload Playwright report
