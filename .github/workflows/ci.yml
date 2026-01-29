@@ -338,6 +338,24 @@ jobs:
         id: image
         run: echo "name=$(echo '${{ env.IMAGE_NAME }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
 
+      - name: Generate pgAdmin server config
+        run: |
+          cat > docker/pgadmin/servers-test.json << EOF
+          {
+            "Servers": {
+              "1": {
+                "Name": "Test Database",
+                "Group": "Test Environment",
+                "Host": "${{ secrets.TEST_DB_HOST }}",
+                "Port": 5432,
+                "MaintenanceDB": "test_manual_db",
+                "Username": "${{ secrets.TEST_POSTGRES_USER }}",
+                "SSLMode": "prefer"
+              }
+            }
+          }
+          EOF
+
       - name: Deploy to Test Environment
         working-directory: ./docker
         env:

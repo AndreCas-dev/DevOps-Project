@@ -52,6 +52,7 @@ services:
       - SCRIPT_NAME=/pgadmin
     volumes:
       - test-pgadmin-data:/var/lib/pgadmin
+      - ./pgadmin/servers-test.json:/pgadmin4/servers.json:ro
     networks:
       - devops-test-network
     restart: unless-stopped

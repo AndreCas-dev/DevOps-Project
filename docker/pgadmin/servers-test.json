@@ -3,6 +3,7 @@
     "1": {
       "Name": "Test Database",
       "Group": "Test Environment",
+      "Host": "GENERATED_AT_RUNTIME",
       "Port": 5432,
       "MaintenanceDB": "test_manual_db",
       "Username": "postgres",
