@@ -133,11 +133,3 @@
     from_ip: "{{ item }}"
   loop: "{{ postgresql_allowed_hosts }}"
   when: ansible_os_family == "Debian" and postgresql_open_firewall
-
-- name: Open PostgreSQL port in firewall (firewalld)
-  firewalld:
-    port: "{{ postgresql_port }}/tcp"
-    permanent: yes
-    state: enabled
-    immediate: yes
-  when: ansible_os_family == "RedHat" and postgresql_open_firewall
