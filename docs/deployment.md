@@ -24,12 +24,37 @@ Il progetto supporta diversi metodi di deployment:
 | **Ansible** | Server dedicati | Semi-automatico |
 | **GitHub Actions** | CI/CD completo | Automatico |
 
+### Gestione Secrets
+
+I secrets sono gestiti tramite **SOPS + Age**. I file criptati si trovano in `secrets/sops/secrets/`:
+
+| File | Ambiente |
+|------|----------|
+| `dev.enc.yaml` | Development |
+| `staging.enc.yaml` | Staging |
+| `production.enc.yaml` | Production |
+
+La configurazione SOPS si trova in `secrets/sops/.sops.yaml`, le chiavi Age in `secrets/sops/keys/`.
+
+Il file `secrets/.env` **non viene committato** ed è generato automaticamente dal decrypt dei file SOPS:
+
+```bash
+# Decrypt dei secrets per l'ambiente desiderato
+sops -d secrets/sops/secrets/dev.enc.yaml | yq -r 'to_entries | .[] | .key + "=" + .value' > secrets/.env
+```
+
 ### Flusso di Deployment
 
 ```
-[Code Push] → [CI Build & Test] → [Security Scan] → [Deploy to Environment]
-                                                            ↓
-                                              [Health Check] → [Rollback se fallisce]
+[Push su dev] → [Unit Tests + Security Scan] → [Build + E2E Test + Push GHCR]
+                                                          ↓
+                                                  [Deploy Test Env]
+                                                          ↓
+                                                  [Manual Approval]
+                                                          ↓
+                                                  [Post-Approval Tests]
+                                                          ↓
+                                            [Cleanup Test + Merge to main]
 ```
 
 ---
@@ -71,11 +96,14 @@ Il progetto supporta diversi metodi di deployment:
 ### Avvio Manuale
 
 ```bash
-# Development mode
+# 1. Decrypt secrets per l'ambiente
+sops -d secrets/sops/secrets/dev.enc.yaml | yq -r 'to_entries | .[] | .key + "=" + .value' > secrets/.env
+
+# 2. Development mode
 cd docker
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
 
-# Production mode (locale)
+# 2. Production mode (locale)
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 ```
 
@@ -174,44 +202,100 @@ ansible-playbook -i inventory/production.ini playbooks/deploy-app.yml
 
 ## Deployment con CI/CD
 
-### GitHub Actions Workflows
+### CI Pipeline (`ci.yml`)
 
-| Workflow | Trigger | Azione |
-|----------|---------|--------|
-| `build.yml` | Push su qualsiasi branch | Build e test |
-| `test.yml` | Push/PR | Esegue test suite |
-| `security.yml` | Push su main, PR | Scansione sicurezza |
-| `deploy-dev.yml` | Push su `dev` | Deploy automatico su dev |
-| `deploy-prod.yml` | Release tag | Deploy su production |
+Il progetto utilizza un **unico workflow** (`ci.yml`) triggerato su push al branch `dev` (ignora modifiche a docs e markdown).
 
-### Flusso CI/CD
+Il workflow usa concurrency per cancellare run precedenti sullo stesso branch:
 
-```
-Feature Branch → PR → main → Deploy Dev
-                              ↓
-                         Tag Release
-                              ↓
-                        Deploy Prod
+```yaml
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 ```
 
-### Configurazione Secrets GitHub
+### Jobs e Flusso
 
-Aggiungi questi secrets in **Settings → Secrets and variables → Actions**:
+```
+Push su dev
+    │
+    ├── test-backend ──────────┐
+    ├── test-frontend ─────────┤
+    ├── security-gitleaks ─────┤
+    └── security-trivy ────────┤
+                               ▼
+                    build-test-push
+                    (Build images → E2E test → Push to GHCR)
+                               │
+                               ▼
+                         deploy-test
+                    (Deploy su self-hosted runner)
+                               │
+                               ▼
+                      manual-approval
+                    (Approvazione manuale)
+                               │
+    ┌──────────────────────────┼──────────────────────────┐
+    ▼                          ▼                          ▼
+post-approval-          post-approval-          post-approval-
+backend-tests           frontend-tests          e2e-tests
+post-approval-          post-approval-
+security-gitleaks       security-trivy
+    │                          │                          │
+    └──────────────────────────┼──────────────────────────┘
+                               ▼
+                    cleanup-test + merge-to-main
+```
 
-| Secret | Descrizione |
-|--------|-------------|
-| `SSH_PRIVATE_KEY` | Chiave SSH per accesso ai server |
-| `DEPLOY_HOST` | Hostname/IP del server |
-| `DEPLOY_USER` | Username per SSH |
-| `POSTGRES_PASSWORD` | Password database production |
-| `GF_ADMIN_PASSWORD` | Password Grafana |
+### Dettaglio Jobs
 
-### Deploy Manuale da GitHub
+| Job | Runner | Descrizione |
+|-----|--------|-------------|
+| `test-backend` | `ubuntu-latest` | Unit test backend con servizio PostgreSQL |
+| `test-frontend` | `ubuntu-latest` | Unit test frontend (build + test) |
+| `security-gitleaks` | `ubuntu-latest` | Scansione secret con Gitleaks |
+| `security-trivy` | `ubuntu-latest` | Vulnerability scan con Trivy (CRITICAL, HIGH) |
+| `build-test-push` | `ubuntu-latest` | Build immagini Docker, E2E test con Playwright, push su GHCR |
+| `deploy-test` | `self-hosted` | Deploy su ambiente test con DB esterno |
+| `manual-approval` | `ubuntu-latest` | Gate di approvazione manuale (environment: `manual-testing`) |
+| `post-approval-*` | `ubuntu-latest` | Ri-esecuzione di tutti i test dopo approvazione |
+| `cleanup-test` | `self-hosted` | Pulizia ambiente test (esegue sempre) |
+| `merge-to-main` | `ubuntu-latest` | Merge automatico `dev` → `main` con `--no-ff` |
 
-1. Vai su **Actions** → **Deploy to Production**
-2. Clicca **Run workflow**
-3. Seleziona branch/tag
-4. Clicca **Run workflow**
+### Container Registry
+
+Le immagini vengono pushate su **GitHub Container Registry** (GHCR):
+
+```
+ghcr.io/<owner>/<repo>/backend:<branch|sha>
+ghcr.io/<owner>/<repo>/frontend:<branch|sha>
+```
+
+I tag generati sono:
+- `type=ref,event=branch` (es. `dev`)
+- `type=sha,prefix=` (es. `abc1234`)
+
+### Configurazione Secrets
+
+I secrets applicativi (credenziali DB, Grafana, ecc.) sono gestiti tramite **SOPS + Age** nei file `secrets/sops/secrets/*.enc.yaml`.
+
+Per il CI/CD, i secrets vanno configurati in **GitHub Settings → Secrets and variables → Actions**:
+
+| Secret | Descrizione | Usato in |
+|--------|-------------|----------|
+| `GITHUB_TOKEN` | Automatico, accesso a GHCR e repo | build-test-push, deploy-test, merge-to-main |
+| `TEST_DB_HOST` | Host del database di test esterno | deploy-test |
+| `TEST_POSTGRES_USER` | Username DB di test | deploy-test |
+| `TEST_POSTGRES_PASSWORD` | Password DB di test | deploy-test |
+| `TEST_SERVER_HOST` | Hostname del server di test (per URL display) | deploy-test |
+| `SOPS_AGE_KEY` | Chiave privata Age per decrypt dei secrets | deploy (quando integrato) |
+
+### Environments GitHub
+
+| Environment | Scopo | Protezione |
+|-------------|-------|------------|
+| `test` | Deploy ambiente di test | - |
+| `manual-testing` | Gate di approvazione manuale | Richiede approvazione reviewer |
 
 ---
 

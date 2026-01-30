@@ -271,49 +271,61 @@ git clone https://github.com/tuo-username/devops-project.git
 cd devops-project
 ```
 
-### 2. Configura Variabili d'Ambiente
+### 2. Installa SOPS e Age
 
+I secrets del progetto sono gestiti con **SOPS + Age**. I file criptati si trovano in `secrets/sops/secrets/`.
+
+**Linux / WSL**:
 ```bash
-# Copia il template
-cp secrets/.env.example secrets/.env
+# Age
+sudo apt install age -y
 
-# Modifica con il tuo editor preferito
-nano secrets/.env
-# oppure
-vim secrets/.env
-# oppure (se hai VS Code)
-code secrets/.env
+# SOPS
+curl -LO https://github.com/getsops/sops/releases/download/v3.9.4/sops-v3.9.4.linux.amd64
+sudo mv sops-v3.9.4.linux.amd64 /usr/local/bin/sops
+sudo chmod +x /usr/local/bin/sops
 ```
 
-**Modifica questi valori**:
+**macOS**:
 ```bash
-# Database
-POSTGRES_USER=devuser
-POSTGRES_PASSWORD=cambia_questa_password
-POSTGRES_DB=devdb
-
-# Application
-APP_ENV=development
-APP_SECRET_KEY=genera_una_stringa_casuale_lunga
-APP_PORT=3000
-
-# Monitoring
-GRAFANA_ADMIN_PASSWORD=cambia_anche_questa
+brew install sops age
 ```
 
-### 3. Genera Password Sicure (Opzionale)
+**Verifica**:
+```bash
+sops --version   # sops 3.9.x
+age --version    # age v1.x.x
+```
+
+### 3. Configura Secrets
 
 ```bash
-# Rendi lo script eseguibile
+# Se hai già la chiave Age del progetto, importala:
+mkdir -p secrets/sops/keys
+cp /percorso/chiave.txt secrets/sops/keys/
+
+# Decrypt dei secrets per generare .env (dev come esempio)
+sops -d secrets/sops/secrets/dev.enc.yaml | yq -r 'to_entries | .[] | .key + "=" + .value' > secrets/.env
+```
+
+> **Nota:** Il file `secrets/.env` è un artefatto temporaneo generato dal decrypt SOPS. Non va mai committato (è già in `.gitignore`). La fonte di verità sono i file `*.enc.yaml`.
+
+Per modificare i secrets:
+```bash
+# Modifica il file criptato direttamente (SOPS apre l'editor con il contenuto in chiaro)
+sops secrets/sops/secrets/dev.enc.yaml
+```
+
+### 4. Setup rapido con script (Alternativa)
+
+```bash
 chmod +x scripts/setup.sh
-
-# Esegui lo script
 ./scripts/setup.sh
 ```
 
-Lo script genererà automaticamente password sicure nel file `.env`.
+Lo script verifica i prerequisiti e genera il file `.env` dai secrets SOPS.
 
-### 4. Installa Make (Opzionale ma Consigliato)
+### 5. Installa Make (Opzionale ma Consigliato)
 
 **Windows (WSL/Ubuntu)**:
 ```bash
@@ -359,14 +371,17 @@ git --version
 docker run hello-world
 # Dovrebbe stampare "Hello from Docker!"
 
-# 4. Controlla file configurazione
-cat secrets/.env
-# Dovrebbe mostrare le tue variabili
+# 4. Verifica SOPS e Age
+sops --version
+age --version
 
-# 5. Avvia i servizi
+# 5. Decrypt secrets e genera .env
+sops -d secrets/sops/secrets/dev.enc.yaml | yq -r 'to_entries | .[] | .key + "=" + .value' > secrets/.env
+
+# 6. Avvia i servizi
 docker compose up -d
 
-# 6. Controlla stato
+# 7. Controlla stato
 docker compose ps
 # Dovrebbero essere tutti "Up"
 ```
@@ -378,7 +393,7 @@ Apri il browser e verifica:
 | Servizio | URL | Credenziali |
 |----------|-----|-------------|
 | **App** | http://localhost:3000 | - |
-| **Grafana** | http://localhost:3001 | admin / [password da .env] |
+| **Grafana** | http://localhost:3001 | admin / [password da secrets SOPS] |
 | **Prometheus** | http://localhost:9090 | - |
 
 Se tutto funziona: **Setup completato! 🎉**
